@@ -1,0 +1,14 @@
+memory,2048,M
+
+gthresh,zero=1.0e-16,twoint=3.0e-15,energy=1.0e-12,gradient=1.0e-8,optstep=1.0e-6,optgrad=1.0e-6
+
+! Extrapolation from ORCA & avnz parameters
+PROC EXTRAP
+  A=(HF_LOW-HF_HIGH)/(EXP(-ALPHA*SQRT(X_LOW))-EXP(-ALPHA*SQRT(X_HIGH)))
+  E_HF_CBS=HF_LOW-A*EXP(-ALPHA*SQRT(X_LOW))
+  E_CORR_CBS=(CORR_LOW*X_LOW^BETA - X_HIGH^BETA *CORR_HIGH)/(X_LOW^BETA - X_HIGH^BETA)
+ENDPROC
+
+geomtyp=xyz
+symmetry,nosym
+geometry={

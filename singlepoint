@@ -1,50 +1,16 @@
 #!/bin/bash
-# Run Single-Point v 1.0
-
-usage() {
-    echo "Run Single-Point" >&2
-    echo "Usage: $0 [option] <xyz file> [<charge>] [<multiplicity>] [extra arguments accessible by <software.ini>]" >&2
-    echo "Options:" >&2
-    echo "     -h                 help" >&2
-    echo "     -f                 force      Start fresh calculations, if previous calculations exist, move to backup." >&2
-    echo "     -c                 clean      Removes unfinished outputs, reports finished results. No calculation performed." >&2
-    echo "     -s                 sequential Calculate all structures in sequential order. Default is random order." >&2
-    echo "                                   When huge number of folders are present, accessing in unsorted order is faster." >&2
-    echo "                                   Furthermore, if multiple jobs run in parallel, random order reduces collision." >&2
-    echo "     -t <hh:mm::ss>     timer      After duration, stop calculation, report finished results." >&2
-    echo "     -n                 no_report  Skip final report of finished results." >&2
-    echo "     -S <software.ini>  source     Customize settings. The file provided as argument is sourced before running." >&2
-    echo "                                   Settings file defines CALC_EXE, CALC_INP_FILENAME, CALC_STDOUT_FILENAME," >&2
-    echo "                                   split_input(), isfinished(), lstmpfiles(), getresult(). The default settings" >&2
-    echo "                                   can be found at the begining of this script as an example." >&2
-    exit 1
-}
+# Run Single-Point v 1.10
 
 while getopts "hfcst:nS:" opt; do
     case $opt in
-        h) usage;;
+        h) PROMPT_USAGE_THEN_EXIT="true";;
         f) flag_force="true" ;;
         c) flag_clean="true" ;;
         s) flag_seque="true" ;;
-        t) timer_duration="$OPTARG"
-            # Validate timer input format
-            if [[ -n $timer_duration && ! $timer_duration =~ ^([0-9]{2}):([0-9]{2}):([0-9]{2})$ ]]; then
-              echo "Error: Duration must be in hh:mm:ss format." >&2
-              usage
-            fi
-            IFS=: read -r hours minutes seconds <<< "$timer_duration"
-            timer_duration_seconds=$((10#$hours * 3600 + 10#$minutes * 60 + 10#$seconds))
-            start_time=$(date +%s)
-            ;;
+        t) timer_duration="$OPTARG" ;;
         n) flag_norep="true" ;;
-        S) INI_SRC_FILE="$OPTARG"
-            if [ ! -f "$INI_SRC_FILE" ]; then
-              echo "Error: Settings file '$INI_SRC_FILE' does not exist" >&2
-              usage
-            fi
-            DO_SOURCE_INI="true"
-            ;;
-        *) echo "Invalid option: -${OPTARG}." >&2; usage;;
+        S) INI_SRC_FILE="$OPTARG" ;;
+        *) echo "Invalid option: -${OPTARG}." >&2; PROMPT_USAGE_THEN_EXIT="true";;
     esac
 done
 
@@ -66,9 +32,7 @@ shift $((OPTIND - 1))
 
 # The script still run if this function not defined, but it would be nice to implement it.
 software_ini_usage() {
-    echo >&2
-    echo "Arguments expected by <software.ini>:" >&2
-    echo "Usage: $0 [option] <xyz file> [<charge>] [<multiplicity>]" >&2
+    echo "(Default software settings) Usage: $0 [options] <xyz file> [<charge>] [<multiplicity>]" >&2
     exit 1
 }
 
@@ -159,12 +123,74 @@ getresult(){
 #       end        #
 ####################
 
-# source settings file
-[ -n "${DO_SOURCE_INI}" ] && source "$INI_SRC_FILE" "$@"
+usage() {
+  (
+echo "Run Single-Point
+Usage: $0 [option] <xyz file> [extra arguments required by <software.ini>, see below]
+
+Options:
+     -h                 help
+     -f                 force      Start fresh calculations, if previous calculations exist, move to backup.
+     -c                 clean      Removes unfinished outputs, reports finished results. No calculation performed.
+     -s                 sequential Calculate all structures in sequential order. Default is random order.
+                                   When huge number of folders are present, accessing in unsorted order is faster.
+                                   Furthermore, if multiple jobs run in parallel, random order reduces collision.
+     -t <hh:mm::ss>     timer      After duration, stop calculation, report finished results.
+     -n                 no_report  Skip final report of finished results.
+     -S <software.ini>  source     Customize settings. The file provided as argument is sourced before running.
+                                   Settings file defines CALC_EXE, CALC_INP_FILENAME, CALC_STDOUT_FILENAME,
+                                   split_input(), isfinished(), lstmpfiles(), getresult(). <software.ini> is
+                                   exposed to the same arguments as this script (excluding flags). The default
+                                   settings near the begining of this script's source code can be copied as a
+                                   template.
+" ) >&2
+    echo "Usage specific to <software.ini>:" >&2
+    declare -F software_ini_usage &> /dev/null && software_ini_usage || echo "No <software.ini>-specific documentation found." >&2
+    exit 1
+}
+
+# Process options
+
+# If error was encountered while parsing options. This will not contain software.ini specific usage message.
+if [ -n "${PROMPT_USAGE_THEN_EXIT}" ]; then
+  usage
+fi
+
+# Source settings file, OVERWRITES default software settings
+if [ -n "${INI_SRC_FILE}" ]; then
+    if [ ! -f "$INI_SRC_FILE" ]; then
+      echo -e "\033[31mError: Settings file '$INI_SRC_FILE' does not exist.\033[0m" >&2
+      usage
+    fi
+#    source "$INI_SRC_FILE" "$@"
+    realpath "$INI_SRC_FILE" >/dev/null && source "$(realpath "$INI_SRC_FILE")" "$@"
+
+fi
+
+# Initialize timer
+if [ -n "${timer_duration}" ]; then
+    # Validate timer input format
+    if [[ -n $timer_duration && ! $timer_duration =~ ^([0-9]+):([0-9]{1,2}):([0-9]{1,2})$ ]]; then
+      echo -e "\033[31mError: Duration must be in hh:mm:ss format.\033[0m" >&2
+      usage
+    fi
+    IFS=: read -r hours minutes seconds <<< "$timer_duration"
+    timer_duration_seconds=$((10#$hours * 3600 + 10#$minutes * 60 + 10#$seconds))
+    start_time=$(date +%s)
+fi
+
+# Sanity Checks
 
 # Check if at least one argument is provided
 if [ "$#" -lt 1 ]; then
-    usage
+  echo -e "\033[31mError: no <xyz file> provided.\033[0m" >&2
+  usage
+fi
+
+# Check <xyz file> file exist
+if [ ! -f "$1" ]; then
+  echo -e "\033[31mError: <xyz file>:'$1' does not exist.\033[0m" >&2
+  usage
 fi
 
 ############################

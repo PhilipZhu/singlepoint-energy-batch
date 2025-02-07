@@ -14,19 +14,60 @@ SRC_DIR="$( dirname -- "${BASH_SOURCE[0]}" | xargs realpath)"
 ###################
 
 usage() {
-    echo "Run Many-body Decomposition" >&2
-    echo "Usage:" >&2
-    echo "       natoms=<natomslist> [charges=<chargelist>] [multips=<multiplicitylist>] [SOFTWARE_INI_PATH=<path_to_software.ini>] $0 [options] <input.xyz>" >&2
-    echo "   or  $0 [options] -S <setup.ini##must define natoms> <input.xyz>" >&2
-    echo "     <natomslist>             String, number of atoms in each monomer, separated by space. (e.g. natoms='3 2 2')" >&2
-    echo "     <chargelist>             String, charge of each monomer, separated by space. (default: '0' for all)" >&2
-    echo "     <multiplicitylist>       String, multiplicity of each monomer, separated by space. (default: '1' for all)" >&2
-    echo '     <path_to_software.ini>   String, path to <software.ini> for `singlepoint` executable.' >&2
-    echo
-    echo "Options:" >&2
-    echo "  -h               help" >&2
-    echo "  -c               clean      Removes unfinished outputs, reports finished results. No calculation performed." >&2
-    echo "  -S <setup.ini>              Customize settings. The file provided as argument is sourced before running." >&2
+  (
+echo "
+Run Many-body Decomposition
+
+Usage:
+       natoms=<natomslist> [other_env_variables=<values>] $0 [options] <input.xyz> ['extra' 'arguments' .., see below]
+   or  $0 [options] -S <settings.ini##must define natoms> <input.xyz> ['extra' 'arguments' .., see below]
+
+Runtime-parsed environment variables:
+       natoms=<natomsList>
+          String, number of atoms in each monomer, separated by space. (e.g. natoms='3 2 2')
+
+       charges=<chargeList>
+          String, charge of each monomer, separated by space. (default: '0' for all)
+
+       multips=<multiplicityList>
+          String, multiplicity of each monomer, separated by space. (default: '1' for all)
+
+       frozens=<frozencoreList>
+          String, number of frozen cores in each monomer, separated by space. (default: '0' for all)
+          Useful in Molpro.
+
+       do_cp=< 'true' / not 'true' >
+          String, to enable/disable counterpoise.
+
+       SOFTWARE_INI_PATH=<path_to_software.ini>
+          String, path to <software.ini> for \`singlepoint\` executable.
+          Note: \`singlepoint\` will be invoked with a specific format:
+
+          \`singlepoint\` -S <software.ini> <xyz file> <charge> <multiplicity> <frozen> ['extra' 'arguments']
+
+          Modify <software.ini> as needed, so that it supports parsing arguments passed in
+          the above format. (Not all arguments need to be used.)
+
+          Special note for counterpoise:
+
+          The $0 script will generate subsystems xyz files denoted for counterpoise calculations
+          in Orca format -- ghost atoms symbols are appended with a ':' charachter. Make sure
+          your <software.ini> can correctly parse that!
+
+       Variable 'natoms' is mandatory in order to properly define many-body decompositions. Other
+       enviroment variables are required per <software.ini>. If <software.ini> do not require a
+       variable, it is not neccessary to define it, as it will assume default value and then get
+       ignored.
+
+Options:
+       -h                help
+
+       -c                clean
+          Removes unfinished outputs, reports finished results. No calculation performed.
+
+       -S <settings.ini>    source
+          Customize settings. The file provided as argument is sourced before running.
+" ) >&2
     exit 1
 }
 
@@ -50,7 +91,7 @@ done
 shift $((OPTIND - 1))
 
 # source settings file
-[ -n "${DO_SOURCE_MBD_INI}" ] && source "$MBD_INI_SRC_FILE" "$@"
+[ -n "${DO_SOURCE_MBD_INI}" ] && realpath "$MBD_INI_SRC_FILE" >/dev/null && source "$(realpath "$MBD_INI_SRC_FILE")" "$@"
 
 #-----------------#
 # sanity checks
@@ -60,13 +101,30 @@ shift $((OPTIND - 1))
 [ -n natoms ]        && natomslist=($natoms)
 [ -n charges ]       && chargelist=($charges)
 [ -n multips ]       && multiplicitylist=($multips)
+[ -n frozens ]       && frozenlist=($frozens)
 
-# Check input xyz file is provided
-[ $# -lt 1 ] && echo "cannot open ‘’ for reading: No such file or directory." && usage
+if [ ! -f "${SRC_DIR}/singlepoint" ]; then
+  echo 'Error: '"$0"' depends on `singlepoint`, which cannot be found under '"${SRC_DIR}/" >&2
+  usage
+fi
+
+# Check if at least one argument is provided
+if [ "$#" -lt 1 ]; then
+  echo "cannot open ‘’ for reading: No such file or directory." >&2
+  echo "Error: no <xyz file> provided." >&2
+  usage
+fi
+
+# Check <xyz file> file exist
+if [ ! -f "$1" ]; then
+  echo "Error: <xyz file>:'$1' does not exist." >&2
+  usage
+fi
+
 input_xyz=$1
 input=${input_xyz%.xyz}
 
-echo "natoms=(${natomslist[@]})"
+echo "natoms='${natomslist[@]}'"
 
 # Check if the xyz file has the correct number of atoms in the first frame
 expected_atoms=$(IFS="+"; echo "$(( ${natomslist[*]} ))")
@@ -83,12 +141,16 @@ fi
 # Default multiplicitylist to 1
 [[ ${#multiplicitylist[@]} -eq 0 ]] && multiplicitylist=($(printf "1 %.0s" ${natomslist[@]}))
 
-echo "charges=(${chargelist[@]})"
-echo "multips=(${multiplicitylist[@]})"
+# Default frozenlist to 0
+[[ ${#frozenlist[@]} -eq 0 ]] && frozenlist=($(printf "0 %.0s" ${natomslist[@]}))
 
-# Validate chargelist and multiplicitylist length
-if [[ ${#chargelist[@]} -ne ${#natomslist[@]} || ${#multiplicitylist[@]} -ne ${#natomslist[@]} ]]; then
-  echo "Error: chargelist and multiplicitylist must have the same length as natomslist."
+echo "charges='${chargelist[@]}'"
+echo "multips='${multiplicitylist[@]}'"
+echo "frozens='${frozenlist[@]}'"
+
+# Validate chargelist, multiplicitylist, frozenlist length
+if [[ ${#chargelist[@]} -ne ${#natomslist[@]} || ${#multiplicitylist[@]} -ne ${#natomslist[@]} || ${#frozenlist[@]} -ne ${#natomslist[@]} ]]; then
+  echo "Error: chargelist, multiplicitylist, frozenlist must have the same length as natomslist."
   usage
 fi
 
@@ -261,6 +323,7 @@ if [ ! -d "${sdir}" ]; then
     # Determine included monomers
     included_monomers=()
     charge=0
+    frozen=0
     multiplicity_sum=0
     num_included_atoms=0
     subsystem_ranges=()
@@ -269,6 +332,7 @@ if [ ! -d "${sdir}" ]; then
       if [[ ${binary:j:1} -eq 1 ]]; then
         included_monomers+=("$((j + 1))")
         charge=$((charge + chargelist[j]))
+        frozen=$((frozen + frozenlist[j]))
         num_included_atoms=$((num_included_atoms + natomslist[j]))
         multiplicity_sum=$((multiplicity_sum + multiplicitylist[j] - 1))
         subsystem_ranges+=("${ranges[j]}")
@@ -286,11 +350,18 @@ if [ ! -d "${sdir}" ]; then
     echo "  Number of atoms: $num_included_atoms"
     echo "  Charge: $charge"
     echo "  Multiplicity: $multiplicity"
+    echo "  Frozen: $frozen"
     echo "  Ranges: $ranges_str"
     echo
 
     # Write Subsystem to file
-    modskip -c $((expected_atoms+2)) -p "$ranges_str" "$input_xyz" | modskip -c "${num_included_atoms}" -p 1 -F 'print "'"${num_included_atoms}"'\nframe:" int(NR/'"${num_included_atoms}"') "  '"${charge} ${multiplicity}"'\n" $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+    if [ "$do_cp" == "true" ]; then
+      # counterpoise
+      modskip -c $((expected_atoms+2)) -p "$ranges_str" -v -F 'print $1, ":", $2, $3, $4' "$input_xyz" | modskip -c $((expected_atoms+2)) -p "3:$((expected_atoms+2))" | modskip -c ${expected_atoms} -p 1 -F 'print "'"${expected_atoms}"'\nframe:" int(NR/'"${expected_atoms}"') "  '"${charge} ${multiplicity} ${frozen}"'\n" $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+    else
+      # no counterpoise
+      modskip -c $((expected_atoms+2)) -p "$ranges_str" "$input_xyz" | modskip -c "${num_included_atoms}" -p 1 -F 'print "'"${num_included_atoms}"'\nframe:" int(NR/'"${num_included_atoms}"') "  '"${charge} ${multiplicity} ${frozen}"'\n" $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+    fi
   done
 
 fi
@@ -301,8 +372,9 @@ cd "${sdir}/"
 for xyzfile in *xx*.xyz; do
   chg=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $2}')
   mult=$(head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $3}')
-  [ "$flag_clean" == "true" ] && ${SRC_DIR}/singlepoint -c -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult &> /dev/null
-  [ "$flag_clean" != "true" ] && ${SRC_DIR}/singlepoint    -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult >&2
+  frz=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $4}')
+  [ "$flag_clean" == "true" ] && ${SRC_DIR}/singlepoint -c -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" &> /dev/null
+  [ "$flag_clean" != "true" ] && ${SRC_DIR}/singlepoint    -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" >&2
 done
 
 cd $wd

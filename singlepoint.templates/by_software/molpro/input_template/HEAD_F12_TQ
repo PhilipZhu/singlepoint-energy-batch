@@ -1,0 +1,20 @@
+memory,2048,M
+
+gthresh,zero=1.0e-16,twoint=3.0e-15,energy=1.0e-12,gradient=1.0e-8
+gprint,orbitals
+
+
+! Extrapolation from peterson's paper
+! J. Chem. Phys. 131, 194105 (2009); http://dx.doi.org/10.1063/1.3265857
+PROC EXTRAP
+  A=EXP(-ALPHA*(X_LOW-X_HIGH))
+  E_HF_CBS=(HF_LOW - A*HF_HIGH)/(1-A)
+  B=(X_LOW/X_HIGH)^(-BETA)
+  E_CCSD_CBS=(CCSD_LOW - B*CCSD_HIGH)/(1-B)
+  C=(X_LOW/X_HIGH)^(-GAMMA)
+  E_T_CBS=(T_LOW - C*T_HIGH)/(1-C)
+ENDPROC
+
+SYMMETRY,NOSYM
+geomtyp=xyz
+geometry={

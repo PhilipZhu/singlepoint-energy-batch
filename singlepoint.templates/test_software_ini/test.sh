@@ -19,10 +19,18 @@ echo "  CALC_EXE=${CALC_EXE}"
 echo "  CALC_INP_FILENAME=${CALC_INP_FILENAME}"
 echo "  CALC_STDOUT_FILENAME=${CALC_STDOUT_FILENAME}"
 
+# TEST: software_ini_usage
+echo
+echo "TEST: software_ini_usage()"
+declare -F software_ini_usage &>/dev/null && echo -e "  \033[32mfunction software_ini_usage() exist.\033[0m" || echo -e "  \033[33mfunction software_ini_usage() do not exist.\033[0m"
+echo
+echo "> software_ini_usage"
+(software_ini_usage) && echo "exit 0" || echo "exit 1"
+
 # TEST: split_input
 echo
 echo "TEST: split_input()"
-declare -F split_input &>/dev/null && echo "  function split_input() exist." || echo "  function split_input() do not exist."
+declare -F split_input &>/dev/null && echo -e "  \033[32mfunction split_input() exist.\033[0m" || echo -e "  \033[33mfunction split_input() do not exist.\033[0m"
 echo
 echo "> split_input"
 split_input ./input.xyz 0 1
@@ -63,7 +71,7 @@ done
 
 # TEST: isfinished
 echo "TEST: isfinished"
-declare -F isfinished &>/dev/null && echo "  function isfinished() exist." || echo "  function isfinished() do not exist."
+declare -F isfinished &>/dev/null && echo -e "  \033[32mfunction isfinished() exist.\033[0m" || echo -e "  \033[33mfunction isfinished() do not exist.\033[0m"
 echo
 for folder in c*/; do
   (cd "${folder}" && echo "> isfinished ${folder}" && (isfinished && echo "  true" || echo "  false") )
@@ -72,7 +80,7 @@ done
 
 # TEST: lstmpfiles
 echo "TEST: lstmpfiles"
-declare -F lstmpfiles &>/dev/null && echo "  function lstmpfiles() exist." || echo "  function lstmpfiles() do not exist."
+declare -F lstmpfiles &>/dev/null && echo -e " \033[32m function lstmpfiles() exist.\033[0m" || echo -e "  \033[33mfunction lstmpfiles() do not exist.\033[0m"
 echo
 for folder in c*/; do
   (cd "${folder}" && echo "> ls ${folder}" && (ls | cat) && echo && echo "> lstmpfiles ${folder}" && lstmpfiles )
@@ -81,7 +89,7 @@ done
 
 # TEST: getresult
 echo "TEST: getresult"
-declare -F getresult &>/dev/null && echo "  function getresult() exist." || echo "  function getresult() do not exist."
+declare -F getresult &>/dev/null && echo -e " \033[32m function getresult() exist.\033[0m" || echo -e "  \033[33mfunction getresult() do not exist.\033[0m"
 echo
 for folder in c*/; do
   (cd "${folder}" && echo "> getresult ${folder}" && getresult )

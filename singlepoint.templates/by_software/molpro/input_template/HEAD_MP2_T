@@ -1,0 +1,7 @@
+memory,512,M
+
+gthresh,zero=1.0e-16,twoint=3.0e-15,energy=1.0e-12,gradient=1.0e-8,optstep=1.0e-6,optgrad=1.0e-6
+
+geomtyp=xyz
+symmetry,nosym
+geometry={

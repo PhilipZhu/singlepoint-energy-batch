@@ -1,0 +1,8 @@
+memory,2048,M
+
+gthresh,zero=1.0e-16,twoint=3.0e-15,energy=1.0e-8,gradient=1.0e-6
+gprint,orbitals
+
+geomtyp=xyz
+symmetry,nosym
+geometry={

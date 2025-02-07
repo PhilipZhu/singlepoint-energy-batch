@@ -1,0 +1,13 @@
+}
+
+basis={
+default=avtz
+}
+
+CHARGE=XXXXXX,SPIN=SSSSSS
+{df-hf}
+{df-mp2}
+
+e_TOT_t=energy
+
+e_FINAL=e_TOT_t

@@ -1,0 +1,7 @@
+memory,2048,M
+
+gprint,orbitals
+
+geomtyp=xyz
+symmetry,nosym
+geometry={

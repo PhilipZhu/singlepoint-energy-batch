@@ -1,0 +1,14 @@
+}
+
+basis={
+default=avqz,Na=cc-pwcvqz
+}
+
+DDDummyDDD
+CHARGE=XXXXXX,SPIN=SSSSSS
+hf
+{ccsd(t),THRDEN=1.0e-9,THRVAR=1.0e-11;core,ZZZZZZ}
+
+e_TOT_t=energy
+
+e_FINAL=e_TOT_t
