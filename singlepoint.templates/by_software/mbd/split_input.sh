@@ -10,7 +10,7 @@
 fin="$1"
 
 CHARCOMMENT='#'
-csplit --prefix=zxx -z <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@\n@\n'"${CHARCOMMENT}"'@g;s@^@'"${CHARCOMMENT}"'###CSPLIT####\n@g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p') '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+csplit --prefix=zxx -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@\n@\n'"${CHARCOMMENT}"'@g;s@^@'"${CHARCOMMENT}"'###CSPLIT####\n@g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p') '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
 sed -i '\@^'"${CHARCOMMENT}"'###CSPLIT####@d' zxx*
 for file in zxx*; do
   mv "$file" "${file/zxx/xx}"

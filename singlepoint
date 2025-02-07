@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run Single-Point v 1.11
+# Run Single-Point v 1.30
 
 while getopts "hfcst:nS:" opt; do
     case $opt in
@@ -86,10 +86,10 @@ split_input() {
 ! DLPNO-CCSD(T) aug-cc-pVTZ aug-cc-pVTZ/C TightSCF
 * xyz '"${chgmult}"
   local FTAIL='*'
-  local SHEAD="$(echo "${FHEAD}" | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
-  local STAIL="$(echo "${FTAIL}" | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
+  local SHEAD="$(echo "${FHEAD}" | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
+  local STAIL="$(echo "${FTAIL}" | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
   local CHARCOMMENT='#'
-  csplit -z <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+  csplit -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
 }
 
 # isfinished

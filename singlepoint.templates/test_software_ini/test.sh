@@ -64,7 +64,7 @@ for folder in c*/; do
     cd "${folder}"
     echo '> $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}"'
     echo "> $CALC_EXE ${CALC_INP_FILENAME} > ${CALC_STDOUT_FILENAME}"
-    [ "${folder}" != "c01/" ] && $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" || ( echo Timeout in 1.0 s.. && timeout 1 $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" )
+    [ "${folder}" != "c00001/" ] && $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" || ( echo Timeout in 1.0 s.. && timeout 1 $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" )
   )
   echo
 done

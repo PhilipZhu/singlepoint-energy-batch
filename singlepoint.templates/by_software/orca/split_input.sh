@@ -15,7 +15,7 @@ TAIL_FN="$5"
 NPROC=1
 
 chgmult="${chg} ${mult}"
-SHEAD="$(cat "${HEAD_FN}" | sed 's/XXXXXX/'"${chgmult}"'/g' | sed 's/YYYYYY/'"${NPROC}"'/g' | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
-STAIL="$(cat "${TAIL_FN}"                                                                     | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
+SHEAD="$(cat "${HEAD_FN}" | sed 's/XXXXXX/'"${chgmult}"'/g' | sed 's/YYYYYY/'"${NPROC}"'/g' | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
+STAIL="$(cat "${TAIL_FN}"                                                                   | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
 CHARCOMMENT='#'
-csplit -z <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+csplit -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'

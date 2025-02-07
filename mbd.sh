@@ -125,6 +125,16 @@ if [ ! -f "$1" ]; then
   usage
 fi
 
+# Check SOFTWARE_INI_PATH file exist
+realpath "$SOFTWARE_INI_PATH" >/dev/null && SOFTWARE_INI_PATH="$(realpath "$SOFTWARE_INI_PATH")"
+if [ ! -f "$SOFTWARE_INI_PATH" ]; then
+  echo "Error: <ini file>:'$SOFTWARE_INI_PATH' does not exist." >&2
+  echo -n "Current directory: " >&2
+  pwd  >&2
+  usage
+fi
+
+
 input_xyz=$1
 input=${input_xyz%.xyz}
 
@@ -364,10 +374,10 @@ if [ ! -d "${sdir}" ]; then
     # Write Subsystem to file
     if [ "$do_cp" == "true" ]; then
       # counterpoise
-      modskip -c $((expected_atoms+2)) -p "$ranges_str" -v -F 'print $1, ":", $2, $3, $4' "$input_xyz" | modskip -c $((expected_atoms+2)) -p "3:$((expected_atoms+2))" | modskip -c ${expected_atoms} -p 1 -F 'print "'"${expected_atoms}"'\nframe:" int(NR/'"${expected_atoms}"') "  '"${charge} ${multiplicity} ${frozen}"'\n" $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+      modskip -c $((expected_atoms+2)) -p "1,2,$ranges_str" -v -F 'print $1, ":", $2, $3, $4' "$input_xyz" | modskip -c $((expected_atoms+2)) -p "2:$((expected_atoms+2))" | modskip -c $((expected_atoms+1)) -p 1 -F 'print "'"${expected_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((expected_atoms+1))"'), $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
     else
       # no counterpoise
-      modskip -c $((expected_atoms+2)) -p "$ranges_str" "$input_xyz" | modskip -c "${num_included_atoms}" -p 1 -F 'print "'"${num_included_atoms}"'\nframe:" int(NR/'"${num_included_atoms}"') "  '"${charge} ${multiplicity} ${frozen}"'\n" $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+      modskip -c $((expected_atoms+2)) -p "2,$ranges_str" "$input_xyz" | modskip -c $((num_included_atoms+1)) -p 1 -F 'print "'"${num_included_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((num_included_atoms+1))"'), $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
     fi
   done
 
@@ -377,10 +387,10 @@ fi
 cd "${sdir}/"
 
 for xyzfile in *xx*.xyz; do
-  chg=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $2}')
-  mult=$(head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $3}')
-  frz=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $4}')
-  [ "$flag_clean" == "true" ] && ${SRC_DIR}/singlepoint -c -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" &> /dev/null
+  chg=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $1}')
+  mult=$(head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $2}')
+  frz=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $3}')
+  [ "$flag_clean" == "true" ] && ${SRC_DIR}/singlepoint -c -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" > /dev/null
   [ "$flag_clean" != "true" ] && ${SRC_DIR}/singlepoint    -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" >&2
 done
 
@@ -390,6 +400,7 @@ cd $wd
 cd "${sdir}/"
 
 for ((order = 1; order <= max_nb; order++)); do
+  [ "$(ls ${order}xx*.dat 2>/dev/null | wc -l)" -eq 0 ] && continue
   for xyzfile in ${order}xx*.dat; do
     binary=${xyzfile#*xx}
     binary=${binary%.dat}

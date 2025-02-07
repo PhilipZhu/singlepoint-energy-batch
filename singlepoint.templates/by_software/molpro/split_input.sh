@@ -15,7 +15,7 @@ spin="$5"
 frozen="$6"
 dummy="$7"
 
-SHEAD="$(cat "${HEAD_FN}" | sed 's/XXXXXX/'"${chg}"'/g' | sed 's/SSSSSS/'"${spin}"'/g' | sed 's/ZZZZZZ/'"${frozen}"'/g' | sed 's/DDDummyDDD/'"${dummy}"'/g' | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
-STAIL="$(cat "${TAIL_FN}" | sed 's/XXXXXX/'"${chg}"'/g' | sed 's/SSSSSS/'"${spin}"'/g' | sed 's/ZZZZZZ/'"${frozen}"'/g' | sed 's/DDDummyDDD/'"${dummy}"'/g' | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
+SHEAD="$(cat "${HEAD_FN}" | sed 's/XXXXXX/'"${chg}"'/g' | sed 's/SSSSSS/'"${spin}"'/g' | sed 's/ZZZZZZ/'"${frozen}"'/g' | sed 's/DDDummyDDD/'"${dummy}"'/g' | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
+STAIL="$(cat "${TAIL_FN}" | sed 's/XXXXXX/'"${chg}"'/g' | sed 's/SSSSSS/'"${spin}"'/g' | sed 's/ZZZZZZ/'"${frozen}"'/g' | sed 's/DDDummyDDD/'"${dummy}"'/g' | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
 CHARCOMMENT='!'
-csplit -z <(sed 's@[[:space:]]*: @1 @g' "${fin}" | sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+csplit -z -b "%05d" <(sed 's@[[:space:]]*: @1 @g' "${fin}" | sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'

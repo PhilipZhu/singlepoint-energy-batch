@@ -1,0 +1,9 @@
+$end
+
+$rem
+sym_ignore true
+no_reorient true
+JOBTYPE         sp
+METHOD          B3LYP
+BASIS           6-31G*
+$end
