@@ -1,27 +1,26 @@
 #!/bin/bash
-# Run Single-Point v 0.2
-
-# environment variables
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${HOME}/software/orca/openmpi-4.1.6/lib
-export PATH=$PATH:${HOME}/software/orca/openmpi-4.1.6/bin
-export ORCA_EXE=${HOME}/software/orca/orca_6_0_0_shared_openmpi416/orca
+# Run Single-Point v 1.0
 
 usage() {
     echo "Run Single-Point" >&2
-    echo "Usage: $0 [option] <xyz file> [charge] [multiplicity]" >&2
+    echo "Usage: $0 [option] <xyz file> [<charge>] [<multiplicity>] [extra arguments accessible by <software.ini>]" >&2
     echo "Options:" >&2
-    echo "         -h             help" >&2
-    echo "         -f             force      Start fresh calculations, if previous calculations exist, move to backup." >&2
-    echo "         -c             clean      Removes unfinished outputs, reports finished results. No calculation performed." >&2
-    echo "         -s             sequential Calculate all structures in sequential order. Default is random order." >&2
+    echo "     -h                 help" >&2
+    echo "     -f                 force      Start fresh calculations, if previous calculations exist, move to backup." >&2
+    echo "     -c                 clean      Removes unfinished outputs, reports finished results. No calculation performed." >&2
+    echo "     -s                 sequential Calculate all structures in sequential order. Default is random order." >&2
     echo "                                   When huge number of folders are present, accessing in unsorted order is faster." >&2
     echo "                                   Furthermore, if multiple jobs run in parallel, random order reduces collision." >&2
-    echo "         -t <hh:mm::ss> timer      After duration, stop calculation, report finished results." >&2
-    echo "         -n             no_report  Skip final report of finished results." >&2
+    echo "     -t <hh:mm::ss>     timer      After duration, stop calculation, report finished results." >&2
+    echo "     -n                 no_report  Skip final report of finished results." >&2
+    echo "     -S <software.ini>  source     Customize settings. The file provided as argument is sourced before running." >&2
+    echo "                                   Settings file defines CALC_EXE, CALC_INP_FILENAME, CALC_STDOUT_FILENAME," >&2
+    echo "                                   split_input(), isfinished(), lstmpfiles(), getresult(). The default settings" >&2
+    echo "                                   can be found at the begining of this script as an example." >&2
     exit 1
 }
 
-while getopts "hfcst:n" opt; do
+while getopts "hfcst:nS:" opt; do
     case $opt in
         h) usage;;
         f) flag_force="true" ;;
@@ -38,6 +37,13 @@ while getopts "hfcst:n" opt; do
             start_time=$(date +%s)
             ;;
         n) flag_norep="true" ;;
+        S) INI_SRC_FILE="$OPTARG"
+            if [ ! -f "$INI_SRC_FILE" ]; then
+              echo "Error: Settings file '$INI_SRC_FILE' does not exist" >&2
+              usage
+            fi
+            DO_SOURCE_INI="true"
+            ;;
         *) echo "Invalid option: -${OPTARG}." >&2; usage;;
     esac
 done
@@ -45,10 +51,30 @@ done
 # Remaining arguments
 shift $((OPTIND - 1))
 
-# Check if at least one argument is provided
-if [ "$#" -lt 1 ]; then
-    usage
-fi
+#############################
+# default software settings #
+#############################
+
+# the following sections can be copied as a template for the settings file (<software.ini>)
+
+#-------------------------#
+# RECOMMENDED definitions
+#-------------------------#
+
+## uncomment this line in external settings file
+#SOFTWARE_INI_DIR="$( dirname -- "${BASH_SOURCE[0]}" | xargs realpath)"
+
+# The script still run if this function not defined, but it would be nice to implement it.
+software_ini_usage() {
+    echo >&2
+    echo "Arguments expected by <software.ini>:" >&2
+    echo "Usage: $0 [option] <xyz file> [<charge>] [<multiplicity>]" >&2
+    exit 1
+}
+
+#-------------------------------------------#
+# user definitions (not required by script)
+#-------------------------------------------#
 
 # Optional second argument
 if [ -n "$2" ]; then
@@ -64,33 +90,114 @@ else
     mult="1"
 fi
 
+# environment variables
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${HOME}/software/orca/openmpi-4.1.6/lib"
+export PATH="$PATH:${HOME}/software/orca/openmpi-4.1.6/bin"
+
+#-------------------------------#
+# REQUIRED variable definitions
+#-------------------------------#
+
+# required definitions
+export CALC_EXE="${HOME}/software/orca/orca_6_0_0_shared_openmpi416/orca"
+export CALC_INP_FILENAME="config.inp"
+export CALC_STDOUT_FILENAME="config.stdout"
+
+#-------------------------------#
+# REQUIRED function definitions
+#-------------------------------#
+
+# split_input
+#   Input  : <xyz file>
+#   Output : Generates input files for ${CALC_EXE} with name format xxNNNN. Each
+#            file will be renamed as ${CALC_INP_FILENAME}. Each job will run as:
+#
+#            ${CALC_EXE} "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}"
+#
+split_input() {
+  local fin="$1"
+  local chgmult="${chg} ${mult}"
+  local FHEAD='%maxcore 6000
+%base "tmp"
+! DLPNO-CCSD(T) aug-cc-pVTZ aug-cc-pVTZ/C TightSCF
+* xyz '"${chgmult}"
+  local FTAIL='*'
+  local SHEAD="$(echo "${FHEAD}" | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
+  local STAIL="$(echo "${FTAIL}" | dos2unix | awk -v ORS='\\n' '1' | sed 's/\\n$//g')"
+  local CHARCOMMENT='#'
+  csplit -z <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+}
+
+# isfinished
+#   Invoked in each job folder.
+#   Check if the job is complete.
+#   Output : true/false
+isfinished() {
+[ "$(grep -s 'TOTAL RUN TIME:' "${CALC_STDOUT_FILENAME}" | wc -l)" -ne 0 ]
+}
+
+# lstmpfiles
+#   Invoked in each job folder.
+#   List all temporary files in the job folder.
+#   Note  : Presence of tmp files or ${CALC_STDOUT_FILENAME} indicates another job might be running.
+#           All tmp files and ${CALC_STDOUT_FILENAME} will be removed either via clean (-c) or after
+#           calculation finishes. DO NOT list output files that you want to KEEP after job finishes!
+lstmpfiles(){
+  ls | grep '^tmp.'
+  return 0
+}
+
+# getresult
+#   Invoked in each job folder.
+#   Extract and convert calculation results from the output file.
+#   Output : Any one-line string extracted with all relevant information.
+getresult(){
+  grep "FINAL SINGLE POINT ENERGY" "${CALC_STDOUT_FILENAME}" | tail -n 1 | awk '{printf("%s %.17f kcal/mol\n", $5, ($5)*627.5096)}'
+}
+
+####################
+#       end        #
+####################
+
+# source settings file
+[ -n "${DO_SOURCE_INI}" ] && source "$INI_SRC_FILE" "$@"
+
+# Check if at least one argument is provided
+if [ "$#" -lt 1 ]; then
+    usage
+fi
+
+############################
+### Start of main script ###
+############################
+
 fin=$1
+fin_realpath=$(realpath ${fin})
 fn=${fin%.xyz}
-chgmult="${chg} ${mult}"
 
 WD="${PWD}"
 sdir="${fn}.DIR"
 
-# prepare inputs
+# prepare inputs (stage 1 - split input)
 if [ "$flag_force" == "true" ] || [ ! -d "${sdir}" ]; then
   [ -d "${sdir}" ] && rm -rf "${sdir}.bk" && mv "${sdir}" "${sdir}.bk" && echo "${sdir} exists, renaming to backup" >> "${WD}/${sdir}.bk/pid$$.log"
   rm -rf "${sdir}"
   mkdir -p "${sdir}/calculations/"
-
   cd "${WD}/${sdir}/calculations"
-
-  csplit -z <(echo '####CSPLIT####' && sed '/^[[:space:]]*[0-9]*[[:space:]]*$/{N;s/^.*\n/*\n####CSPLIT####\n%maxcore 6000\n%base "tmp"\n! DLPNO-CCSD(T) aug-cc-pVTZ aug-cc-pVTZ\/C TightSCF\n* xyz '"${chgmult}"'\n# COMMENT FROM XYZ FILE : /g}' ../../${fin} | tail -n +3 && echo '*') '/^####CSPLIT####$/' '{*}'
-
-  [ "$flag_seque" == "true" ] && filelist=$(ls xx*) || filelist=$(ls -f -I . -I .. | grep '^xx')
-  for file in ${filelist}; do
-    folder=${file#xx}
-    mkdir "c${folder}/"
-    mv "${file}" "c${folder}/config.inp"
-  done
+  split_input "${fin_realpath}"
 fi
 
-# run Orca
-cd "${WD}/${sdir}/calculations"
+# prepare inputs (stage 2 - prepare job folders)
+cd "${WD}/${sdir}/calculations" || exit 1
+
+[ "$flag_seque" == "true" ] && filelist=$(ls xx*) || filelist=$(ls -f -I . -I .. | grep '^xx')
+for file in ${filelist}; do
+  folder=${file#xx}
+  mkdir "c${folder}/" && mv "${file}" "c${folder}/${CALC_INP_FILENAME}"
+done
+
+# run
+cd "${WD}/${sdir}/calculations" || exit 1
 
 [ "$flag_seque" == "true" ] && folderlist=$(ls c*/ -d) || folderlist=$(ls -f -I . -I .. | grep '^c' | shuf)
 for folder in ${folderlist}; do
@@ -100,21 +207,21 @@ for folder in ${folderlist}; do
 
   # if clean
 
-  [ "$flag_clean" == "true" ] && [ "$(grep -s 'TOTAL RUN TIME:' config.out | wc -l)" -eq 0 ] && rm -f config.out tmp.* # only removes files potentially generated by this script, if other files are created, this will not remove, but this folder will also be skipped by below codes
+  [ "$flag_clean" == "true" ] && ! isfinished && rm -f "${CALC_STDOUT_FILENAME}" && (lstmpfiles 2> /dev/null | tr '\n' '\0' | xargs -0 rm -rf) # for safety concerns, only removes files KNOWN to be potentially generated by this script
   [ "$flag_clean" == "true" ] && continue
 
   # if run
 
-  [ "$(ls | wc -l)" -ne 1 ] && echo "skips ${folder}" >> "${WD}/${sdir}/pid$$.log" && continue # skip folder: calculation running or finished
+  ( [ -f "${CALC_STDOUT_FILENAME}" ] || [ "$(lstmpfiles 2> /dev/null | wc -l)" -ne 0 ] || isfinished ) && echo "skips ${folder}" >> "${WD}/${sdir}/pid$$.log" && continue # skip folder: calculation running or finished
 
   flag_run="true" && echo -n "${folder} running.." >> "${WD}/${sdir}/pid$$.log"
 
   # run
-  $ORCA_EXE config.inp > config.out && rm tmp.* && echo "next" >> "${WD}/${sdir}/pid$$.log"
+  $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" && (lstmpfiles 2> /dev/null | tr '\n' '\0' | xargs -0 rm -rf) && echo "next" >> "${WD}/${sdir}/pid$$.log"
 
   # collect result for this pid
   id=${folder#c} && id=${id%/}
-  grep "E(CCSD(T))" config.out | sed 's/^.* //g' | awk '{printf("%s %.17f kcal/mol\n", $1, ($1)*627.5096)}' | paste -d' ' <(echo "$((10#${id}))") -
+  getresult | paste -d' ' <(echo "$((10#${id}))") -
 
   # timer
   elapsed=$(( $(date +%s) - start_time ))
@@ -126,7 +233,7 @@ done > "${WD}/${sdir}/pid$$.dat"
 #[ "$flag_clean" == "true" ] && exit
 
 # if clean, no need to check "nothing to run". Continue to collect result.
-[ "$flag_clean" == "true" ] && flag_run="true" && echo "Cleaning done. Now collecting result.." | tee -a "${WD}/${sdir}/pid$$.log" >&2
+[ "$flag_clean" == "true" ] && flag_run="true" && echo "Cleaning done." | tee -a "${WD}/${sdir}/pid$$.log" >&2
 
 # check if nothing to run
 [ "$flag_run" != "true" ] && echo "Nothing to run! All calculation folders are: 1. finished; or 2. being run by another process; or 3. failed. In case 3, make sure no other process is running, then try cleaning the calculation folder (use -c flag)." | tee -a "${WD}/${sdir}/pid$$.log" >&2
@@ -143,5 +250,5 @@ for folder in ${folderlist}; do
   [ ! -d "$folder" ] && continue # check isfolder
   cd "$folder"
   id=${folder#c} && id=${id%/}
-  grep "E(CCSD(T))" config.out | sed 's/^.* //g' | awk '{printf("%s %.17f kcal/mol\n", $1, ($1)*627.5096)}' | paste -d' ' <(echo "$((10#${id}))") -
+  getresult | paste -d' ' <(echo "$((10#${id}))") -
 done | tee "${WD}/${fn}.dat"

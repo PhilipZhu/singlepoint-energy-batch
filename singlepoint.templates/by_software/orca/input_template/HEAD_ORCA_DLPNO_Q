@@ -1,0 +1,7 @@
+!DLPNO-CCSD(T) cc-pVQZ cc-pVQZ/C
+%maxcore 6000
+%pal
+nprocs YYYYYY
+end
+%base "tmp"
+* xyz XXXXXX

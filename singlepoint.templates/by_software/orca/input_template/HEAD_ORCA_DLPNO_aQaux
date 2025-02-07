@@ -1,0 +1,7 @@
+!DLPNO-CCSD(T) aug-cc-pVQZ AUTOAUX
+%maxcore 6000
+%pal
+nprocs YYYYYY
+end
+%base "tmp"
+* xyz XXXXXX
