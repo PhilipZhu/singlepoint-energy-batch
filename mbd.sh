@@ -39,6 +39,10 @@ Runtime-parsed environment variables:
        do_cp=< 'true' / not 'true' >
           String, to enable/disable counterpoise.
 
+       max_nb=<max_nb>
+          Integer (>=0) string, maximum many-body order. (If set to empty string ('') or not set (default),
+          script will do full many-body decompositions)
+
        SOFTWARE_INI_PATH=<path_to_software.ini>
           String, path to <software.ini> for \`singlepoint\` executable.
           Note: \`singlepoint\` will be invoked with a specific format:
@@ -295,6 +299,7 @@ awk \
 wd=$PWD
 
 num_monomers=${#natomslist[@]}
+[ ! -n "${max_nb}" ] && max_nb="${num_monomers}"
 
 # prepare calculation input
 sdir="${input}.mbd.DIR/"
@@ -339,9 +344,11 @@ if [ ! -d "${sdir}" ]; then
       fi
     done
 
-    multiplicity=$((multiplicity_sum % 2 + 1))
-
+    # Break out of loop if max order is reached
     num_included_monomers="${#included_monomers[@]}"
+    [[ $num_included_monomers -gt $max_nb ]] && continue
+
+    multiplicity=$((multiplicity_sum % 2 + 1))
     ranges_str=$(IFS=","; echo "${subsystem_ranges[*]}")
 
     # Output results for this subsystem using the stored variables
@@ -382,7 +389,7 @@ cd $wd
 # calculate mbd
 cd "${sdir}/"
 
-for ((order = 1; order <= num_monomers; order++)); do
+for ((order = 1; order <= max_nb; order++)); do
   for xyzfile in ${order}xx*.dat; do
     binary=${xyzfile#*xx}
     binary=${binary%.dat}
