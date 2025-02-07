@@ -7,7 +7,7 @@
 #
 #            ${CALC_EXE} ${CALC_INP_FILENAME} > ${CALC_STDOUT_FILENAME}
 
-fin="$1"
+input_xyz_file="$1"
 chg="$2"
 mult="$3"
 HEAD_FN="$4"
@@ -17,4 +17,4 @@ chgmult="${chg} ${mult}"
 SHEAD="$(cat "${HEAD_FN}" | sed 's/XXXXX/'"${chgmult}"'/g' | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
 STAIL="$(cat "${TAIL_FN}"                                  | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
 CHARCOMMENT='!'
-csplit -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+csplit -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${input_xyz_file} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'

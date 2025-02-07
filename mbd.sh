@@ -66,6 +66,9 @@ Runtime-parsed environment variables:
 Options:
        -h                help
 
+       -f                force
+          Start fresh calculations, if previous calculations exist, move to backup.
+
        -c                clean
           Removes unfinished outputs, reports finished results. No calculation performed.
 
@@ -76,9 +79,10 @@ Options:
 }
 
 # Parse options
-while getopts "hcS:" opt; do
+while getopts "hfcS:" opt; do
     case $opt in
         h) usage;;
+        f) flag_force="true" ;;
         c) flag_clean="true" ;;
         S) MBD_INI_SRC_FILE="$OPTARG"
             if [ ! -f "$MBD_INI_SRC_FILE" ]; then
@@ -307,13 +311,17 @@ awk \
 ###################
 
 wd=$PWD
+sdir="${input}.mbd.DIR/"
 
 num_monomers=${#natomslist[@]}
 [ ! -n "${max_nb}" ] && max_nb="${num_monomers}"
 
 # prepare calculation input
-sdir="${input}.mbd.DIR/"
-if [ ! -d "${sdir}" ]; then
+
+[ ! -d "${sdir}" ] && [ "$flag_clean" == "true" ] && [ "$flag_force" != "true" ] && echo "Do nothing. (No existing calculation folder, specified clean -c flag without force -f) : $0 $@ ($PWD)" >&2 && exit
+
+if [ "$flag_force" == "true" ] || [ ! -d "${sdir}" ]; then
+  [ -d "${sdir}" ] && rm -rf "${sdir}.bk" && mv "${sdir}" "${sdir}.bk" && echo "${sdir} exists, renaming to backup" >&2
 
   # create calculation folder
   rm -rf "${sdir}"

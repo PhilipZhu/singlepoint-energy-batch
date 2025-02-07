@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run Single-Point v 1.30
+# Run Single-Point v 1.31
 
 while getopts "hfcst:nS:" opt; do
     case $opt in
@@ -79,7 +79,7 @@ export CALC_STDOUT_FILENAME="config.stdout"
 #            ${CALC_EXE} "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}"
 #
 split_input() {
-  local fin="$1"
+  local input_xyz_file="$1"
   local chgmult="${chg} ${mult}"
   local FHEAD='%maxcore 6000
 %base "tmp"
@@ -89,7 +89,7 @@ split_input() {
   local SHEAD="$(echo "${FHEAD}" | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
   local STAIL="$(echo "${FTAIL}" | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
   local CHARCOMMENT='#'
-  csplit -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${fin} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+  csplit -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${input_xyz_file} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
 }
 
 # isfinished
@@ -197,26 +197,29 @@ fi
 ### Start of main script ###
 ############################
 
-fin=$1
-fin_realpath=$(realpath ${fin})
-fn=${fin%.xyz}
+input_xyz_file=$1
+input_xyz_file_realpath=$(realpath ${input_xyz_file})
+fn=${input_xyz_file%.xyz}
 
 WD="${PWD}"
 sdir="${fn}.DIR"
 
 # prepare inputs (stage 1 - split input)
+
+[ ! -d "${sdir}" ] && [ "$flag_clean" == "true" ] && [ "$flag_force" != "true" ] && echo "Do nothing. (No existing calculation folder, specified clean -c flag without force -f) : $0 $@ ($PWD)" >&2 && exit
+
 if [ "$flag_force" == "true" ] || [ ! -d "${sdir}" ]; then
   [ -d "${sdir}" ] && rm -rf "${sdir}.bk" && mv "${sdir}" "${sdir}.bk" && echo "${sdir} exists, renaming to backup" >> "${WD}/${sdir}.bk/pid$$.log"
   rm -rf "${sdir}"
   mkdir -p "${sdir}/calculations/"
   cd "${WD}/${sdir}/calculations"
-  split_input "${fin_realpath}"
+  split_input "${input_xyz_file_realpath}"
 fi
 
 # prepare inputs (stage 2 - prepare job folders)
 cd "${WD}/${sdir}/calculations" || exit 1
 
-[ "$flag_seque" == "true" ] && filelist=$(ls xx*) || filelist=$(ls -f -I . -I .. | grep '^xx')
+[ "$flag_seque" == "true" ] && filelist=$(ls xx* 2> /dev/null) || filelist=$(ls -f -I . -I .. | grep '^xx')
 for file in ${filelist}; do
   folder=${file#xx}
   mkdir "c${folder}/" && mv "${file}" "c${folder}/${CALC_INP_FILENAME}"
