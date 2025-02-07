@@ -1,0 +1,70 @@
+#!/bin/bash
+# Run Single-Point v 0.1
+
+# Check if at least one argument is provided
+if [ "$#" -lt 1 ]; then
+    echo "Run Single-Point"
+    echo "Usage: $0 <xyz file> [charge] [multiplicity]"
+    exit 1
+fi
+
+# environment variables
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${HOME}/software/orca/openmpi-4.1.6/lib
+export PATH=$PATH:${HOME}/software/orca/openmpi-4.1.6/bin
+export ORCA_EXE=${HOME}/software/orca/orca_6_0_0_shared_openmpi416/orca
+
+# Optional second argument
+if [ -n "$2" ]; then
+    chg="$2"
+else
+    chg="0"
+fi
+
+# Optional third argument
+if [ -n "$3" ]; then
+    mult="$3"
+else
+    mult="1"
+fi
+
+fin=$1
+fn=${fin%.xyz}
+chgmult="${chg} ${mult}"
+
+WD="${PWD}"
+sdir="${fn}.DIR"
+
+[ -d "${sdir}" ] && rm -rf "${sdir}.bk" && mv "${sdir}" "${sdir}.bk" && echo "${sdir} exists, renaming to backup"
+rm -rf "${sdir}"
+mkdir -p "${sdir}/calculations/"
+
+cd "${WD}/${sdir}/calculations"
+
+# prepare inputs
+csplit -z <(echo '####CSPLIT####' && sed '/^[[:space:]]*[0-9]*[[:space:]]*$/{N;s/^.*\n/*\n####CSPLIT####\n%maxcore 6000\n%base "tmp"\n! DLPNO-CCSD(T) aug-cc-pVTZ aug-cc-pVTZ\/C TightSCF\n* xyz '"${chgmult}"'\n# COMMENT FROM XYZ FILE : /g}' ../../${fin} | tail -n +3 && echo '*') '/^####CSPLIT####$/' '{*}'
+
+for file in xx*; do
+  folder=${file#xx}
+  mkdir "c${folder}/"
+  mv "${file}" "c${folder}/config.inp"
+done
+
+cd "${WD}/${sdir}/calculations"
+
+# run Orca
+for folder in c*/; do
+  cd "${WD}/${sdir}/calculations"
+  cd "$folder"
+  $ORCA_EXE config.inp > config.out && rm tmp.*
+done
+
+# collect result
+cd "${WD}/${sdir}/calculations" || exit 1
+
+for folder in c*; do
+  cd "${WD}/${sdir}/calculations"
+  [ ! -d "$folder" ] && continue # check isfolder
+  cd "$folder"
+  id=${folder#c}
+  grep "E(CCSD(T))" config.out | sed 's/^.* //g' | awk '{printf("%s %.17f\n", $1, ($1)*627.5096)}' | paste -d' ' <(echo "$((10#${id}))") -
+done > "${WD}/${fn}.dat"
