@@ -137,12 +137,12 @@ Options:
                                    Furthermore, if multiple jobs run in parallel, random order reduces collision.
      -t <hh:mm::ss>     timer      After duration, stop calculation, report finished results.
      -n                 no_report  Skip final report of finished results.
-     -S <software.ini>  source     Customize settings. The file provided as argument is sourced before running.
-                                   Settings file defines CALC_EXE, CALC_INP_FILENAME, CALC_STDOUT_FILENAME,
+     -S <software.ini>  source     Customize software. The <software.ini> file is sourced before running. In the
+                                   <software.ini> file, define CALC_EXE, CALC_INP_FILENAME, CALC_STDOUT_FILENAME,
                                    split_input(), isfinished(), lstmpfiles(), getresult(). <software.ini> is
                                    exposed to the same arguments as this script (excluding flags). The default
-                                   settings near the begining of this script's source code can be copied as a
-                                   template.
+                                   software section near the begining of this script's source code can be copied
+                                   as a template for <software.ini>.
 " ) >&2
     echo "Usage specific to <software.ini>:" >&2
     declare -F software_ini_usage &> /dev/null && software_ini_usage || echo "No <software.ini>-specific documentation found." >&2

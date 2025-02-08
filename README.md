@@ -10,7 +10,7 @@ Smart wrapper scripts to run single-point energy calculations and many-body deco
 
 Energy calculator software can be customized. Default calculator is Orca 6.0.0, using DLPNO-CCSD(T)/aug-cc-pVTZ.
 
-### (Optional) To use the default software, you need to set up Orca 6.0.0:
+### Option 1: To use the default software, you need to set up Orca 6.0.0:
 
 1. Install OpenMPI 4.1.6 in `${HOME}/software/orca/openmpi-4.1.6/` (requried by Orca 6.0.0).
 
@@ -24,7 +24,7 @@ export PATH="$PATH:${HOME}/software/orca/openmpi-4.1.6/bin"
 export CALC_EXE="${HOME}/software/orca/orca_6_0_0_shared_openmpi416/orca"
 ```
 
-### Alternatively, set up other energy calculator softwares.
+### Option 2: Alternatively, set up other energy calculator softwares.
 
 You can use any custom softwares to calculate energies. You need to implement a `<software.ini>` file for new softwares. Custom `<software.ini>` for several other softwares, including Molpro, Q-Chem, Gaussian 09, are provided in `./singlepoint.templates/by_software/`.
 
