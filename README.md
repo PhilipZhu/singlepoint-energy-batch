@@ -40,4 +40,4 @@ To run calculations in parallel, simply launch multiple `./singlepoint <structur
 
 # General Usage
 
-Run `./singlepoint` or `./mbd.sh` without arguments to display usage messages. See `./examples/` for examples of running `./singlepoint` and `./mbd.sh` with custom softwares.
+Run `./singlepoint -h` or `./mbd.sh -h` to display usage messages. See `./examples/` for examples of running `./singlepoint` and `./mbd.sh` with custom softwares.
