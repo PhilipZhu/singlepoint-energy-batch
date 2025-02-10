@@ -26,7 +26,7 @@ export CALC_EXE="${HOME}/software/orca/orca_6_0_0_shared_openmpi416/orca"
 
 ### Option 2: Alternatively, set up other energy calculator softwares.
 
-You can use any custom softwares to calculate energies. You need to implement a `<software.ini>` file for new softwares. Custom `<software.ini>` for several other softwares, including Molpro, Q-Chem, Gaussian 09, are provided in `./singlepoint.templates/by_software/`.
+You can use any custom softwares to calculate energies. You need to implement a `<software.ini>` file for new softwares. Custom `<software.ini>` for several other softwares, including Molpro, Q-Chem, Gaussian 09, are provided in `./software_ini_templates/by_software/`.
 
 # Basic Usage
 
