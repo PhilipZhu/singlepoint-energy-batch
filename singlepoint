@@ -10,7 +10,7 @@ while getopts "hfcst:nS:" opt; do
         t) timer_duration="$OPTARG" ;;
         n) flag_norep="true" ;;
         S) INI_SRC_FILE="$OPTARG" ;;
-        *) echo "Invalid option: -${OPTARG}." >&2; PROMPT_USAGE_THEN_EXIT="true";;
+        *) PROMPT_USAGE_THEN_EXIT="true"; break;;
     esac
 done
 

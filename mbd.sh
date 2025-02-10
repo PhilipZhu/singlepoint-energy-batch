@@ -91,7 +91,7 @@ while getopts "hfcS:" opt; do
             fi
             DO_SOURCE_MBD_INI="true"
             ;;
-        *) echo "Invalid option: -${OPTARG}." >&2; usage;;
+        *) usage;;
     esac
 done
 
