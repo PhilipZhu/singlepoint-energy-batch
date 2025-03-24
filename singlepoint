@@ -117,7 +117,7 @@ lstmpfiles(){
 #   Extract and convert calculation results from the output file.
 #   Output : Any one-line string extracted with all relevant information.
 getresult(){
-  grep "FINAL SINGLE POINT ENERGY" "${CALC_STDOUT_FILENAME}" | tail -n 1 | awk '{printf("%s %.17f kcal/mol\n", $5, ($5)*627.5096)}'
+  grep "FINAL SINGLE POINT ENERGY" "${CALC_STDOUT_FILENAME}" | tail -n 1 | awk '{printf("%.17f kcal/mol\n", ($5)*627.5096)}'
 }
 
 ####################

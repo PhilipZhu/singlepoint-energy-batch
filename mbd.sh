@@ -7,7 +7,7 @@ SRC_DIR="$( dirname -- "${BASH_SOURCE[0]}" | xargs realpath)"
 ###################
 
 # software.ini specifies software and level of theory for single-point calculations
-[ "${SOFTWARE_INI_PATH}" == "" ] && SOFTWARE_INI_PATH="${SRC_DIR}/template_software_ini/by_software/orca/software.ini"
+#[ "${SOFTWARE_INI_PATH}" == "" ] && SOFTWARE_INI_PATH="${SRC_DIR}/template_software_ini/by_software/orca/software.ini"
 
 ###################
 # END OF SETTINGS #
@@ -130,12 +130,14 @@ if [ ! -f "$1" ]; then
 fi
 
 # Check SOFTWARE_INI_PATH file exist
-realpath "$SOFTWARE_INI_PATH" >/dev/null && SOFTWARE_INI_PATH="$(realpath "$SOFTWARE_INI_PATH")"
-if [ ! -f "$SOFTWARE_INI_PATH" ]; then
-  echo "Error: <ini file>:'$SOFTWARE_INI_PATH' does not exist." >&2
-  echo -n "Current directory: " >&2
-  pwd  >&2
-  usage
+if [ -n "${SOFTWARE_INI_PATH}" ]; then
+  realpath "$SOFTWARE_INI_PATH" >/dev/null && SOFTWARE_INI_PATH="$(realpath "$SOFTWARE_INI_PATH")"
+  if [ ! -f "$SOFTWARE_INI_PATH" ]; then
+    echo "Error: <ini file>:'$SOFTWARE_INI_PATH' does not exist." >&2
+    echo -n "Current directory: " >&2
+    pwd  >&2
+    usage
+  fi
 fi
 
 
