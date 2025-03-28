@@ -223,7 +223,8 @@ cd "${WD}/${sdir}/calculations" || exit 1
 [ "$flag_seque" == "true" ] && filelist=$(ls xx* 2> /dev/null) || filelist=$(ls -f -I . -I .. | grep '^xx')
 for file in ${filelist}; do
   folder=${file#xx}
-  mkdir "c${folder}/" && mv "${file}" "c${folder}/${CALC_INP_FILENAME}"
+  #mkdir "c${folder}/" && mv "${file}" "c${folder}/${CALC_INP_FILENAME}" # weird race condition when multiple singlepoint running in parallel. would put xx000182 into c000183/
+  mkdir "c${folder}/" && mv "${file}" "c${folder}/" && mv "c${folder}/${file}" "c${folder}/${CALC_INP_FILENAME}" # under race condition, this fixes inconsistent mv
 done
 
 # run
