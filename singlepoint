@@ -252,7 +252,7 @@ for folder in ${folderlist}; do
 
   # collect result for this pid
   id=${folder#c} && id=${id%/}
-  getresult | paste -d' ' <(echo "$((10#${id}))") -
+  getresult | head -n 1 | paste -d' ' <(echo "$((10#${id}))") -
 
   # timer
   elapsed=$(( $(date +%s) - start_time ))
@@ -281,5 +281,5 @@ for folder in ${folderlist}; do
   [ ! -d "$folder" ] && continue # check isfolder
   cd "$folder"
   id=${folder#c} && id=${id%/}
-  getresult | paste -d' ' <(echo "$((10#${id}))") -
+  getresult | head -n 1 | paste -d' ' <(echo "$((10#${id}))") -
 done | tee "${WD}/${fn}.dat"
