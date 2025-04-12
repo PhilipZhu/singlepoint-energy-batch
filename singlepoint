@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run Single-Point v 1.31
 
-while getopts "hfcst:nS:" opt; do
+while getopts "hfcst:nS:E" opt; do
     case $opt in
         h) PROMPT_USAGE_THEN_EXIT="true";;
         f) flag_force="true" ;;
@@ -10,6 +10,7 @@ while getopts "hfcst:nS:" opt; do
         t) timer_duration="$OPTARG" ;;
         n) flag_norep="true" ;;
         S) INI_SRC_FILE="$OPTARG" ;;
+        E) flag_exe="true" ;;
         *) PROMPT_USAGE_THEN_EXIT="true"; break;;
     esac
 done
@@ -144,6 +145,11 @@ Options:
                                    exposed to the same arguments as this script (excluding flags). The default
                                    software section near the begining of this script's source code can be copied
                                    as a template for <software.ini>.
+     -E                 EXE        Investigate raw CALC_EXE command. This runs:
+                                   "'$CALC_EXE "$CALC_INP_FILENAME" > "$CALC_STDOUT_FILENAME"'"
+                                   Parameter <xyz file> is required for format consistency because some custom
+                                   <software.ini> might parse command arguments assuming <xyz file> exist, but its
+                                   value is ignored.
 " ) >&2
     echo "Usage specific to <software.ini>:" >&2
     declare -F software_ini_usage &> /dev/null && software_ini_usage || echo "No <software.ini>-specific documentation found." >&2
@@ -178,6 +184,13 @@ if [ -n "${timer_duration}" ]; then
     IFS=: read -r hours minutes seconds <<< "$timer_duration"
     timer_duration_seconds=$((10#$hours * 3600 + 10#$minutes * 60 + 10#$seconds))
     start_time=$(date +%s)
+fi
+
+# Run raw CALC_EXE command if requested.
+if [ -n "${flag_exe}" ]; then
+  echo -e "\033[33m> $CALC_EXE \"${CALC_INP_FILENAME}\" > \"${CALC_STDOUT_FILENAME}\"\033[0m"
+  $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}"
+  exit
 fi
 
 # Sanity Checks
