@@ -384,10 +384,10 @@ if [ "$flag_force" == "true" ] || [ ! -d "${sdir}" ]; then
     # Write Subsystem to file
     if [ "$do_cp" == "true" ]; then
       # counterpoise
-      modskip -c $((expected_atoms+2)) -p "1,2,$ranges_str" -v -F 'print $1, ":", $2, $3, $4' "$input_xyz" | modskip -c $((expected_atoms+2)) -p "2:$((expected_atoms+2))" | modskip -c $((expected_atoms+1)) -p 1 -F 'print "'"${expected_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((expected_atoms+1))"'), $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+      modskip -c $((expected_atoms+2)) -p "1,2,$ranges_str" -v -F 'print $1, ":", $2, $3, $4' "$input_xyz" | modskip -c $((expected_atoms+2)) -p "2:$((expected_atoms+2))" | modskip -c $((expected_atoms+1)) -p 1 -F 'print "'"${expected_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((expected_atoms+1))"'), $0' > "${sdir}/tmp.${binary}.xyz" && mv "${sdir}/tmp.${binary}.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
     else
       # no counterpoise
-      modskip -c $((expected_atoms+2)) -p "2,$ranges_str" "$input_xyz" | modskip -c $((num_included_atoms+1)) -p 1 -F 'print "'"${num_included_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((num_included_atoms+1))"'), $0' > "${sdir}/tmp.xyz" && mv "${sdir}/tmp.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+      modskip -c $((expected_atoms+2)) -p "2,$ranges_str" "$input_xyz" | modskip -c $((num_included_atoms+1)) -p 1 -F 'print "'"${num_included_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((num_included_atoms+1))"'), $0' > "${sdir}/tmp.${binary}.xyz" && mv "${sdir}/tmp.${binary}.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
     fi
   done
 
