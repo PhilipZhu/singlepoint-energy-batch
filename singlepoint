@@ -218,6 +218,9 @@ fn=${input_xyz_file%.xyz}
 WD="${PWD}"
 sdir="${fn}.DIR"
 
+PIDLOG="${WD}/${sdir}/pid$$.log"
+PIDDAT="${WD}/${sdir}/pid$$.dat"
+
 # prepare inputs (stage 1 - split input)
 
 [ ! -d "${sdir}" ] && [ "$flag_clean" == "true" ] && [ "$flag_force" != "true" ] && echo "Do nothing. (No existing calculation folder, specified clean -c flag without force -f) : $0 $@ ($PWD)" >&2 && exit
@@ -256,12 +259,12 @@ for folder in ${folderlist}; do
 
   # if run
 
-  ( [ -f "${CALC_STDOUT_FILENAME}" ] || [ "$(lstmpfiles 2> /dev/null | wc -l)" -ne 0 ] || isfinished ) && echo "skips ${folder}" >> "${WD}/${sdir}/pid$$.log" && continue # skip folder: calculation running or finished
+  ( [ -f "${CALC_STDOUT_FILENAME}" ] || [ "$(lstmpfiles 2> /dev/null | wc -l)" -ne 0 ] || isfinished ) && echo "skips ${folder}" >> "${PIDLOG}" && continue # skip folder: calculation running or finished
 
-  flag_run="true" && echo -n "${folder} running.." >> "${WD}/${sdir}/pid$$.log"
+  flag_run="true" && echo -n "${folder} running.." >> "${PIDLOG}"
 
   # run
-  $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" && (lstmpfiles 2> /dev/null | tr '\n' '\0' | xargs -0 rm -rf) && echo "next" >> "${WD}/${sdir}/pid$$.log"
+  $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" && (lstmpfiles 2> /dev/null | tr '\n' '\0' | xargs -0 rm -rf) && echo "next" >> "${PIDLOG}"
 
   # collect result for this pid
   id=${folder#c} && id=${id%/}
@@ -269,21 +272,21 @@ for folder in ${folderlist}; do
 
   # timer
   elapsed=$(( $(date +%s) - start_time ))
-  [[ -n $timer_duration && elapsed -ge timer_duration_seconds ]] && echo "Timeout." | tee -a "${WD}/${sdir}/pid$$.log" >&2 && break;
+  [[ -n $timer_duration && elapsed -ge timer_duration_seconds ]] && echo "Timeout." | tee -a "${PIDLOG}" >&2 && break;
 
-done > "${WD}/${sdir}/pid$$.dat"
+done > "${PIDDAT}"
 
 ## uncomment if needed: if clean, no need to continue. (won't collect results)
 #[ "$flag_clean" == "true" ] && exit
 
 # if clean, no need to check "nothing to run". Continue to collect result.
-[ "$flag_clean" == "true" ] && flag_run="true" && echo "Cleaning done." | tee -a "${WD}/${sdir}/pid$$.log" >&2
+[ "$flag_clean" == "true" ] && flag_run="true" && echo "Cleaning done." | tee -a "${PIDLOG}" >&2
 
 # check if nothing to run
-[ "$flag_run" != "true" ] && echo "Nothing to run! All calculation folders are: 1. finished; or 2. being run by another process; or 3. failed. In case 3, make sure no other process is running, then try cleaning the calculation folder (use -c flag)." | tee -a "${WD}/${sdir}/pid$$.log" >&2
+[ "$flag_run" != "true" ] && echo "Nothing to run! All calculation folders are: 1. finished; or 2. being run by another process; or 3. failed. In case 3, make sure no other process is running, then try cleaning the calculation folder (use -c flag)." | tee -a "${PIDLOG}" >&2
 
 # check if skip report result
-[ "$flag_norep" != "true" ] && echo "Now collecting result.." | tee -a "${WD}/${sdir}/pid$$.log" >&2 || exit
+[ "$flag_norep" != "true" ] && echo "Now collecting result.." | tee -a "${PIDLOG}" >&2 || exit
 
 # collect result
 cd "${WD}/${sdir}/calculations" || exit 1
