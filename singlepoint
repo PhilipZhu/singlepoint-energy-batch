@@ -137,7 +137,7 @@ Options:
      -s                 sequential Calculate all structures in sequential order. Default is random order.
                                    When huge number of folders are present, accessing in unsorted order is faster.
                                    Furthermore, if multiple jobs run in parallel, random order reduces collision.
-     -t <hh:mm::ss>     timer      After duration, stop calculation, report finished results.
+     -t <hh:mm:ss>      timer      After duration, stop calculation, report finished results.
      -n                 no_report  Skip final report of finished results.
      -S <software.ini>  source     Customize software. The <software.ini> file is sourced before running. In the
                                    <software.ini> file, define CALC_EXE, CALC_INP_FILENAME, CALC_STDOUT_FILENAME,
