@@ -256,7 +256,7 @@ fi
 cd "${WD}/${sdir}/calculations" || exit 1
 
 filelist=$(ls -f -I . -I .. | grep '^xx')
-[ "$flag_seque" == "true" ] && filelist=$(echo "${filelist}" | sort) || filelist=$(echo "${filelist}" | shuf)
+[[ "$flag_seque" == "true" || -n "$mask_task" ]] && filelist=$(echo "${filelist}" | sort) || filelist=$(echo "${filelist}" | shuf)
 for file in ${filelist}; do
   folder=${file#xx}
   #mkdir "c${folder}/" && mv "${file}" "c${folder}/${CALC_INP_FILENAME}" # weird race condition when multiple singlepoint running in parallel. would put xx000182 into c000183/
