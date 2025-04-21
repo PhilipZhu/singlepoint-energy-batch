@@ -1,13 +1,14 @@
 #!/bin/bash
 # Run Single-Point v 1.31
 
-while getopts "hfcst:nS:E" opt; do
+while getopts "hfcst:m:nS:E" opt; do
     case $opt in
         h) PROMPT_USAGE_THEN_EXIT="true";;
         f) flag_force="true" ;;
         c) flag_clean="true" ;;
         s) flag_seque="true" ;;
         t) timer_duration="$OPTARG" ;;
+        m) mask_task="$OPTARG" ;;
         n) flag_norep="true" ;;
         S) INI_SRC_FILE="$OPTARG" ;;
         E) flag_exe="true" ;;
@@ -137,6 +138,10 @@ Options:
      -s                 sequential Calculate all structures in sequential order. Default is random order.
                                    When huge number of folders are present, accessing in unsorted order is faster.
                                    Furthermore, if multiple jobs run in parallel, random order reduces collision.
+     -m <%d:%d:%d>      mask       Run masked jobs. Index begins at 0. Format: start[:stop[:step]].
+                                     start  >= 0 or empty (default : 0, inclusive)
+                                     stop   >= 0 or empty (default : NR, inclusive)
+                                     step   >  0 or empty (default : 1)
      -t <hh:mm:ss>      timer      After duration, stop calculation, report finished results.
      -n                 no_report  Skip final report of finished results.
      -S <software.ini>  source     Customize software. The <software.ini> file is sourced before running. In the
@@ -177,13 +182,27 @@ fi
 # Initialize timer
 if [ -n "${timer_duration}" ]; then
     # Validate timer input format
-    if [[ -n $timer_duration && ! $timer_duration =~ ^([0-9]+):([0-9]{1,2}):([0-9]{1,2})$ ]]; then
+    if [[ ! "${timer_duration}" =~ ^([0-9]+):([0-9]{1,2}):([0-9]{1,2})$ ]]; then
       echo -e "\033[31mError: Duration must be in hh:mm:ss format.\033[0m" >&2
       usage
     fi
     IFS=: read -r hours minutes seconds <<< "$timer_duration"
     timer_duration_seconds=$((10#$hours * 3600 + 10#$minutes * 60 + 10#$seconds))
     start_time=$(date +%s)
+fi
+
+# Initialize task mask
+if [ -n "${mask_task}" ]; then
+    # Validate format
+    if [[ ! "${mask_task}" =~ ^([0-9]*)?(:[0-9]*(:([1-9][0-9]*)?)?)?$ ]]; then
+      echo -e "\033[31mError: task mask must be in start[:stop[:step]] format. (start>=0, stop>=0, step>0)\033[0m" >&2
+      usage
+    fi
+    IFS=: read -r mask_start mask_stop mask_step <<< "$mask_task"
+    mask_start=${mask_start:-0}
+    mask_stop=${mask_stop:-"NR"}
+    mask_step=${mask_step:-1}
+    echo mask: start=${mask_start} stop=${mask_stop} step=${mask_step} >&2
 fi
 
 # Run raw CALC_EXE command if requested.
@@ -248,7 +267,12 @@ done
 cd "${WD}/${sdir}/calculations" || exit 1
 
 folderlist=$(ls -f -I . -I .. | grep '^c')
-[ "$flag_seque" == "true" ] && folderlist=$(echo "${folderlist}" | sort) || folderlist=$(echo "${folderlist}" | shuf)
+[[ "$flag_seque" == "true" || -n "$mask_task" ]] && folderlist=$(echo "${folderlist}" | sort)
+if [ -n "$mask_task" ];  then
+  echo mask: start=${mask_start} stop=${mask_stop} step=${mask_step} >> "${PIDLOG}"
+  folderlist=$(echo "${folderlist}" | awk "NR-1 >= ${mask_start} && NR-1 <= ${mask_stop} && (NR-1-${mask_start}) % ${mask_step} == 0")
+fi
+[ "$flag_seque" != "true" ] && folderlist=$(echo "${folderlist}" | shuf)
 for folder in ${folderlist}; do
 
   cd "${WD}/${sdir}/calculations"
@@ -274,7 +298,7 @@ for folder in ${folderlist}; do
 
   # timer
   elapsed=$(( $(date +%s) - start_time ))
-  [[ -n $timer_duration && elapsed -ge timer_duration_seconds ]] && echo "Timeout." | tee -a "${PIDLOG}" >&2 && break;
+  [[ -n "$timer_duration" && elapsed -ge timer_duration_seconds ]] && echo "Timeout." | tee -a "${PIDLOG}" >&2 && break;
 
 done > "${PIDDAT}"
 
