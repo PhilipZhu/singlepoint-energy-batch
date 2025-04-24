@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run Single-Point v 1.40
+# Run Single-Point v 2.0.0
 
 while getopts "hfcst:m:nS:E" opt; do
     case $opt in
@@ -65,6 +65,7 @@ export PATH="$PATH:${HOME}/software/orca/openmpi-4.1.6/bin"
 #-------------------------------#
 
 # required definitions
+export INP_XYZ_FILENAME="input.xyz"
 export CALC_EXE="${HOME}/software/orca/orca_6_0_0_shared_openmpi416/orca"
 export CALC_INP_FILENAME="config.inp"
 export CALC_STDOUT_FILENAME="config.stdout"
@@ -73,25 +74,26 @@ export CALC_STDOUT_FILENAME="config.stdout"
 # REQUIRED function definitions
 #-------------------------------#
 
-# split_input
-#   Input  : <xyz file>
-#   Output : Generates input files for ${CALC_EXE} with name format xxNNNN. Each
-#            file will be renamed as ${CALC_INP_FILENAME}. Each job will run as:
+# prepare_input
+#   Invoked in each job folder.
+#   Output : Generates ${CALC_INP_FILENAME} as input for ${CALC_EXE} from a
+#            single-frame XYZ file ${INP_XYZ_FILENAME}. Each job will run as:
 #
 #            ${CALC_EXE} "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}"
 #
-split_input() {
-  local input_xyz_file="$1"
+prepare_input() {
+  local input_xyz_file="${INP_XYZ_FILENAME}"
   local chgmult="${chg} ${mult}"
   local FHEAD='%maxcore 6000
 %base "tmp"
 ! DLPNO-CCSD(T) aug-cc-pVTZ aug-cc-pVTZ/C TightSCF
 * xyz '"${chgmult}"
   local FTAIL='*'
-  local SHEAD="$(echo "${FHEAD}" | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
-  local STAIL="$(echo "${FTAIL}" | awk -v ORS='\\n' '{gsub(/\r$/,"")}1' | sed 's/\\n$//g')"
-  local CHARCOMMENT='#'
-  csplit -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@^.*\n@'"${STAIL}"'\n'"${CHARCOMMENT}"'###CSPLIT####\n'"${SHEAD}"'\n'"${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT}"' COMMENT FROM XYZ FILE : @g}' ${input_xyz_file} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p' && echo -e "${STAIL}") '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+  ( echo "${FHEAD}"
+    echo -n "### COMMENT FROM XYZ FILE : "
+    tail -n +2 "${input_xyz_file}"
+    echo "${FTAIL}"
+  ) > "${CALC_INP_FILENAME}"
 }
 
 # isfinished
@@ -145,11 +147,11 @@ Options:
      -t <hh:mm:ss>      timer      After duration, stop calculation, report finished results.
      -n                 no_report  Skip final report of finished results.
      -S <software.ini>  source     Customize software. The <software.ini> file is sourced before running. In the
-                                   <software.ini> file, define CALC_EXE, CALC_INP_FILENAME, CALC_STDOUT_FILENAME,
-                                   split_input(), isfinished(), lstmpfiles(), getresult(). <software.ini> is
-                                   exposed to the same arguments as this script (excluding flags). The default
-                                   software section near the begining of this script's source code can be copied
-                                   as a template for <software.ini>.
+                                   <software.ini> file, define INP_XYZ_FILENAME, CALC_EXE, CALC_INP_FILENAME,
+                                   CALC_STDOUT_FILENAME, prepare_input(), isfinished(), lstmpfiles(),
+                                   getresult(). <software.ini> is exposed to the same arguments as this script
+                                   (excluding flags). The default software section near the begining of this
+                                   script's source code can be copied as a template for <software.ini>.
      -E                 EXE        Investigate raw CALC_EXE command. This runs:
                                    "'$CALC_EXE "$CALC_INP_FILENAME" > "$CALC_STDOUT_FILENAME"'"
                                    Parameter <xyz file> is required for format consistency because some custom
@@ -159,6 +161,21 @@ Options:
     echo "Usage specific to <software.ini>:" >&2
     declare -F software_ini_usage &> /dev/null && software_ini_usage || echo "No <software.ini>-specific documentation found." >&2
     exit 1
+}
+
+# split_xyz
+#   Input  : <xyz file>
+#   Output : Split input XYZ file into single frames with name format xxNNNN. Each
+#            file will be moved into job folder and renamed as ${INP_XYZ_FILENAME}.
+#
+split_xyz() {
+  local input_xyz_file="$1"
+  local CHARCOMMENT=''
+  csplit --prefix=zxx -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@\n@\n'"${CHARCOMMENT}"'@g;s@^@'"${CHARCOMMENT}"'###CSPLIT####\n@g}' ${input_xyz_file} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p') '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+  sed -i '\@^'"${CHARCOMMENT}"'###CSPLIT####@d' zxx*
+  for file in $(ls -f -I . -I .. | grep '^zxx'); do
+    mv "$file" "${file/zxx/xx}"
+  done
 }
 
 # Process options
@@ -249,7 +266,8 @@ if [ "$flag_force" == "true" ] || [ ! -d "${sdir}" ]; then
   rm -rf "${sdir}"
   mkdir -p "${sdir}/calculations/"
   cd "${WD}/${sdir}/calculations"
-  split_input "${input_xyz_file_realpath}"
+  declare -F split_input &>/dev/null && echo "Warning: Detected split_input() in <software.ini>. Usage of split_input() is deprecated since v2.0. Newer versions uses prepare_input(); see help message or examples for implementation guide. This run will use split_input() as provided, which overwrites current version's prepare_input() logic." >&2 && INP_XYZ_FILENAME="${CALC_INP_FILENAME}" && split_input "${input_xyz_file_realpath}" || # backward compatibility for singlepoint version < 1.40
+  split_xyz "${input_xyz_file_realpath}"
 fi
 
 # prepare inputs (stage 2 - prepare job folders)
@@ -259,8 +277,8 @@ filelist=$(ls -f -I . -I .. | grep '^xx')
 [[ "$flag_seque" == "true" || -n "$mask_task" ]] && filelist=$(echo "${filelist}" | sort) || filelist=$(echo "${filelist}" | shuf)
 for file in ${filelist}; do
   folder=${file#xx}
-  #mkdir "c${folder}/" && mv "${file}" "c${folder}/${CALC_INP_FILENAME}" # weird race condition when multiple singlepoint running in parallel. would put xx000182 into c000183/
-  mkdir "c${folder}/" && mv "${file}" "c${folder}/" && mv "c${folder}/${file}" "c${folder}/${CALC_INP_FILENAME}" # under race condition, this fixes inconsistent mv
+  #mkdir "c${folder}/" && mv "${file}" "c${folder}/${INP_XYZ_FILENAME}" # weird race condition when multiple singlepoint running in parallel. would put xx000182 into c000183/
+  mkdir "c${folder}/" && mv "${file}" "c${folder}/" && mv "c${folder}/${file}" "c${folder}/${INP_XYZ_FILENAME}" # under race condition, this fixes inconsistent mv
 done
 
 # run
@@ -290,6 +308,7 @@ for folder in ${folderlist}; do
   flag_run="true" && echo -n "${folder} running.." >> "${PIDLOG}"
 
   # run
+  [ ! -f "${CALC_INP_FILENAME}" ] && prepare_input
   $CALC_EXE "${CALC_INP_FILENAME}" > "${CALC_STDOUT_FILENAME}" && (lstmpfiles 2> /dev/null | tr '\n' '\0' | xargs -0 rm -rf) && echo "next" >> "${PIDLOG}"
 
   # collect result for this pid
