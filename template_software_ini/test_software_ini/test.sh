@@ -15,6 +15,7 @@ mkdir -p tmp && cd tmp && cp ../input.xyz .
 echo "TEST: ${INI_FILE}"
 source "${INI_FILE}"
 echo
+echo "  INP_XYZ_FILENAME=${INP_XYZ_FILENAME}"
 echo "  CALC_EXE=${CALC_EXE}"
 echo "  CALC_INP_FILENAME=${CALC_INP_FILENAME}"
 echo "  CALC_STDOUT_FILENAME=${CALC_STDOUT_FILENAME}"
@@ -27,13 +28,8 @@ echo
 echo "> software_ini_usage"
 (software_ini_usage) && echo "exit 0" || echo "exit 1"
 
-# TEST: split_input
-echo
-echo "TEST: split_input()"
-declare -F split_input &>/dev/null && echo -e "  \033[32mfunction split_input() exist.\033[0m" || echo -e "  \033[33mfunction split_input() do not exist.\033[0m"
-echo
-echo "> split_input"
-split_input ./input.xyz 0 1
+echo "> csplit"
+csplit -z input.xyz '/^2$/' '{*}'
 echo
 echo "> ls"
 ls xx*
@@ -41,17 +37,24 @@ echo
 
 for file in xx*; do
   folder=${file#xx}
-  mkdir "c${folder}/" && cp "${file}" "c${folder}/${CALC_INP_FILENAME}"
+  mkdir "c${folder}/" && cp "${file}" "c${folder}/${INP_XYZ_FILENAME}"
 done
 
-echo "TEST: prepare input files"
+# TEST: prepare_input
+echo
+echo "TEST: prepare_input()"
+declare -F prepare_input &>/dev/null && echo -e "  \033[32mfunction prepare_input() exist.\033[0m" || echo -e "  \033[33mfunction prepare_input() do not exist.\033[0m"
+echo
+
 echo
 for folder in c*/; do
-  (cd "${folder}" && echo "> ls ${folder}" && ls)
+  (cd "${folder}" && prepare_input && echo "> cd ${folder}; prepare_input; ls" && ls)
   echo
 done
 
 for folder in c*/; do
+  (cd "${folder}" && echo "> cat ${folder}${INP_XYZ_FILENAME}" && cat "${INP_XYZ_FILENAME}")
+  echo
   (cd "${folder}" && echo "> cat ${folder}${CALC_INP_FILENAME}" && cat "${CALC_INP_FILENAME}")
   echo
 done
