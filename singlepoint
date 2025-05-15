@@ -171,10 +171,10 @@ Options:
 split_xyz() {
   local input_xyz_file="$1"
   local CHARCOMMENT=''
-  csplit --prefix=zxx -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@\n@\n'"${CHARCOMMENT}"'@g;s@^@'"${CHARCOMMENT}"'###CSPLIT####\n@g}' ${input_xyz_file} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p') '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
-  sed -i '\@^'"${CHARCOMMENT}"'###CSPLIT####@d' zxx*
-  for file in $(ls -f -I . -I .. | grep '^zxx'); do
-    mv "$file" "${file/zxx/xx}"
+  csplit --prefix=p$$xx -z -b "%05d" <(sed '\@^[[:space:]]*[0-9]*[[:space:]]*$@{N;s@\n@\n'"${CHARCOMMENT}"'@g;s@^@'"${CHARCOMMENT}"'###CSPLIT####\n@g}' ${input_xyz_file} | sed -n '\@^'"${CHARCOMMENT}"'###CSPLIT####@,$p') '/^'"${CHARCOMMENT}"'###CSPLIT####$/' '{*}'
+  sed -i '\@^'"${CHARCOMMENT}"'###CSPLIT####@d' p$$xx*
+  for file in $(ls -f -I . -I .. | grep "^p$$xx"); do
+    mv "$file" "${file/p$$xx/xx}"
   done
 }
 
