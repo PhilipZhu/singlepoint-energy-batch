@@ -396,7 +396,8 @@ fi
 # run calculations
 cd "${sdir}/"
 
-for xyzfile in *xx*.xyz; do
+#for xyzfile in *xx*.xyz; do
+for xyzfile in $(ls *xx*.xyz 2> /dev/null | shuf); do
   chg=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $1}')
   mult=$(head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $2}')
   frz=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $3}')
