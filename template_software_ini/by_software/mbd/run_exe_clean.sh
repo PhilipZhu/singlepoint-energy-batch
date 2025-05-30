@@ -6,5 +6,5 @@ XYZ_FILE="$2"
 
 # wrapper
 
-[ "$#" -eq 2 ] && "${EXE_DIR}/../../../mbd.sh" -c -S "$MBD_INI_PATH" "$XYZ_FILE" "dummy,O1,H1,Cl1,Na1" && exit
+[ "$#" -eq 2 ] && "${EXE_DIR}/../../../mbd.sh" -c -S "$MBD_INI_PATH" "$XYZ_FILE" && exit
 echo 'Do not see enough arguments. Did you run: ./singlepoint -S <mbd.ini> <input.xyz> <path_to_settings.ini>?' >&2

@@ -4,8 +4,8 @@ basis={
 default=avdz
 }
 
-dummy,C1,O1
-CHARGE=0,SPIN=SSSSSS
+DDDummyDDD
+CHARGE=XXXXXX,SPIN=SSSSSS
 {hf;start,atdens}
 HF_LOW=ENERGY
 {ccsd(t)-f12b,THRDEN=1.0e-9,THRVAR=1.0e-11}
@@ -19,8 +19,8 @@ basis={
 default=avtz
 }
 
-dummy,C1,O1
-CHARGE=0,SPIN=SSSSSS
+DDDummyDDD
+CHARGE=XXXXXX,SPIN=SSSSSS
 {hf;start,atdens}
 HF_HIGH=ENERGY
 {ccsd(t)-f12b,THRDEN=1.0e-9,THRVAR=1.0e-11}

@@ -10,8 +10,8 @@ set,ri
 default=avtz/optri
 }
 
-dummy,C1,O1
-CHARGE=0,SPIN=SSSSSS
+DDDummyDDD
+CHARGE=XXXXXX,SPIN=SSSSSS
 {hf;start,atdens;shift,-1.0,-0.5}
 HF_LOW=ENERGY
 {mp2}
@@ -32,8 +32,8 @@ set,ri
 default=avqz/optri
 }
 
-dummy,C1,O1
-CHARGE=0,SPIN=SSSSSS
+DDDummyDDD
+CHARGE=XXXXXX,SPIN=SSSSSS
 {hf;start,atdens;shift,-1.0,-0.5}
 HF_HIGH=ENERGY
 {mp2}
