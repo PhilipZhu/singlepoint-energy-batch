@@ -20,5 +20,5 @@ STAIL="$(cat "${TAIL_FN}" | sed 's/XXXXXX/'"${chg}"'/g' | sed 's/SSSSSS/'"${spin
 CHARCOMMENT='!'
 echo -e "${SHEAD}"
 echo -n "${CHARCOMMENT}${CHARCOMMENT}${CHARCOMMENT} COMMENT FROM XYZ FILE : "
-tail -n +2 "${input_xyz_file}"
+tail -n +2 "${input_xyz_file}" | sed 's@[[:space:]]*: @1 @g'
 echo -e "${STAIL}"
