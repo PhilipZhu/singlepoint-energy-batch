@@ -20,7 +20,7 @@ Run Many-body Decomposition
 
 Usage:
        natoms=<natomslist> [other_env_variables=<values>] $0 [options] <input.xyz> ['extra' 'arguments' .., see below]
-   or  $0 [options] -S <settings.ini##must define natoms> <input.xyz> ['extra' 'arguments' .., see below]
+   or  $0 [options] -s <settings.ini##must define natoms> <input.xyz> ['extra' 'arguments' .., see below]
 
 Runtime-parsed environment variables:
        natoms=<natomsList>
@@ -47,7 +47,7 @@ Runtime-parsed environment variables:
           String, path to <software.ini> for \`singlepoint\` executable.
           Note: \`singlepoint\` will be invoked with a specific format:
 
-          \`singlepoint\` -S <software.ini> <xyz file> <charge> <multiplicity> <frozen> ['extra' 'arguments']
+          \`singlepoint\` -s <software.ini> <xyz file> <charge> <multiplicity> <frozen> ['extra' 'arguments']
 
           Modify <software.ini> as needed, so that it supports parsing arguments passed in
           the above format. (Not all arguments need to be used.)
@@ -72,25 +72,29 @@ Options:
        -c                clean
           Removes unfinished outputs, reports finished results. No calculation performed.
 
-       -S <settings.ini>    source
+       -s <settings.ini> source
           Customize settings. The file provided as argument is sourced before running.
+
+       -S <software.ini> SOFTWARE_INI_PATH
+           Same as specifying SOFTWARE_INI_PATH in environment variables.
 " ) >&2
     exit 1
 }
 
 # Parse options
-while getopts "hfcS:" opt; do
+while getopts "hfcs:S:" opt; do
     case $opt in
         h) usage;;
         f) flag_force="true" ;;
         c) flag_clean="true" ;;
-        S) MBD_INI_SRC_FILE="$OPTARG"
+        s) MBD_INI_SRC_FILE="$OPTARG"
             if [ ! -f "$MBD_INI_SRC_FILE" ]; then
               echo "Error: Settings file '$MBD_INI_SRC_FILE' does not exist" >&2
               usage
             fi
             DO_SOURCE_MBD_INI="true"
             ;;
+        S) SOFTWARE_INI_PATH="$OPTARG";;
         *) usage;;
     esac
 done
@@ -139,6 +143,7 @@ if [ -n "${SOFTWARE_INI_PATH}" ]; then
     usage
   fi
 fi
+echo "SOFTWARE_INI_PATH='${SOFTWARE_INI_PATH}'"
 
 
 input_xyz=$1
