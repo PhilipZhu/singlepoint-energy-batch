@@ -66,6 +66,9 @@ Options:
 
        -S <software.ini> SOFTWARE_INI_PATH
            Same as specifying SOFTWARE_INI_PATH in environment variables.
+
+Precedence:
+       Pre-defined env variables  <  Option args  <  [-s <settings.ini>]
 " ) >&2
     exit 1
 }
