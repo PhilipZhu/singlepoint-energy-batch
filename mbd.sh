@@ -2,17 +2,6 @@
 
 SRC_DIR="$( dirname -- "${BASH_SOURCE[0]}" | xargs realpath)"
 
-###################
-# CUSTOM SETTINGS #
-###################
-
-# software.ini specifies software and level of theory for single-point calculations
-#[ "${SOFTWARE_INI_PATH}" == "" ] && SOFTWARE_INI_PATH="${SRC_DIR}/template_software_ini/by_software/orca/software.ini"
-
-###################
-# END OF SETTINGS #
-###################
-
 usage() {
   (
 echo "
