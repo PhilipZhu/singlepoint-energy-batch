@@ -129,7 +129,8 @@ getresult(){
 #   Invoked with 1 argument: $id
 postfinish(){
   local OUT_XYZ_FILENAME="output.xyz"
-  rm -rf "${OUT_XYZ_FILENAME}" && (head -n 1 "${INP_XYZ_FILENAME}" && echo -n "$1 " && (getresult | tr '\n' ' ') && tail -n +2 "${INP_XYZ_FILENAME}") > "${OUT_XYZ_FILENAME}"
+  local id="$1"
+  rm -rf "${OUT_XYZ_FILENAME}" && (head -n 1 "${INP_XYZ_FILENAME}" && echo -n "${id} " && (getresult | tr '\n' ' ') && tail -n +2 "${INP_XYZ_FILENAME}") > "${OUT_XYZ_FILENAME}"
 }
 
 ####################
