@@ -124,6 +124,14 @@ getresult(){
   grep "FINAL SINGLE POINT ENERGY" "${CALC_STDOUT_FILENAME}" | tail -n 1 | awk '{printf("%.17f kcal/mol\n", ($5)*627.5096)}'
 }
 
+# postfinish
+#   Invoked in each job folder after successful calculation.
+#   Invoked with 1 argument: $id
+postfinish(){
+  local OUT_XYZ_FILENAME="output.xyz"
+  rm -rf "${OUT_XYZ_FILENAME}" && (head -n 1 "${INP_XYZ_FILENAME}" && echo -n "$1 " && (getresult | tr '\n' ' ') && tail -n +2 "${INP_XYZ_FILENAME}") > "${OUT_XYZ_FILENAME}"
+}
+
 ####################
 #       end        #
 ####################
@@ -148,8 +156,8 @@ Options:
      -n                 no_report  Skip final report of finished results.
      -S <software.ini>  source     Customize software. The <software.ini> file is sourced before running. In the
                                    <software.ini> file, define INP_XYZ_FILENAME, CALC_EXE, CALC_INP_FILENAME,
-                                   CALC_STDOUT_FILENAME, prepare_input(), isfinished(), lstmpfiles(),
-                                   getresult(). <software.ini> is exposed to the same arguments as this script
+                                   CALC_STDOUT_FILENAME, prepare_input(), isfinished(), lstmpfiles(), getresult(),
+                                   postfinish(). <software.ini> is exposed to the same arguments as this script
                                    (excluding flags). The default software section near the begining of this
                                    script's source code can be copied as a template for <software.ini>.
      -E                 EXE        Investigate raw CALC_EXE command. This runs:
@@ -313,6 +321,8 @@ for folder in ${folderlist}; do
 
   # collect result for this pid
   id=${folder#c} && id=${id%/}
+
+  isfinished && postfinish "${id}"
   getresult | head -n 1 | paste -d' ' <(echo "$((10#${id}))") -
 
   # timer
