@@ -415,10 +415,23 @@ for ((order = 1; order <= max_nb; order++)); do
 
     subsubclusters_binaries="$(generate_subclusters "$binary")"
 
-    awk '{print $1, $2}' ${order}xx${binary}.dat > ${order}MB${binary}.dat
+#    awk '{print $1, $2}' ${order}xx${binary}.dat > ${order}MB${binary}.dat
+#
+#    for subcluster in ${subsubclusters_binaries}; do
+#      echo "$(paste -d' ' ${order}MB${binary}.dat *MB${subcluster}.dat | awk '{if($4!="") {printf("%d %.16G\n", $1, $2-$4)} else {print $1}}')" > ${order}MB${binary}.dat
+#    done
+
+    cat ${order}xx${binary}.dat > ${order}MB${binary}.dat
 
     for subcluster in ${subsubclusters_binaries}; do
-      echo "$(paste -d' ' ${order}MB${binary}.dat *MB${subcluster}.dat | awk '{if($4!="") {printf("%d %.16G\n", $1, $2-$4)} else {print $1}}')" > ${order}MB${binary}.dat
+      echo "$(awk '
+      FNR==NR {a[NR]=$0; next} {split(a[FNR],b);
+      printf "%d ", $1;
+      if(NF == length(b))
+        for(i=2;i<=NF;i++)
+          if($i+0==$i && b[i]+0==b[i]) printf "%.16G ", b[i]-$i;
+          else printf "%s ", b[i];
+      print ""}' ${order}MB${binary}.dat *MB${subcluster}.dat)" > ${order}MB${binary}.dat
     done
   done
 done
