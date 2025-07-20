@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run Single-Point v 2.0.0
+# Run Single-Point v 2.1.0
 
 while getopts "hfcst:m:nS:E" opt; do
     case $opt in
