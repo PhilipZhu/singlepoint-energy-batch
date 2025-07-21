@@ -6,4 +6,5 @@ no_reorient true
 JOBTYPE         sp
 METHOD          B3LYP
 BASIS           6-31G*
+!GUI             2
 $end
