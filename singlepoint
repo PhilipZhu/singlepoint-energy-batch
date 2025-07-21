@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run Single-Point v 2.1.0
+# Run Single-Point v 2.1.1
 
 while getopts "hfcst:m:nS:E" opt; do
     case $opt in
@@ -130,7 +130,7 @@ getresult(){
 postfinish(){
   local OUT_XYZ_FILENAME="output.xyz"
   local id="$1"
-  rm -rf "${OUT_XYZ_FILENAME}" && (head -n 1 "${INP_XYZ_FILENAME}" && echo -n "${id} " && (getresult | tr '\n' ' ') && tail -n +2 "${INP_XYZ_FILENAME}") > "${OUT_XYZ_FILENAME}"
+  rm -rf "${OUT_XYZ_FILENAME}" && (head -n 1 "${INP_XYZ_FILENAME}" && echo -n "${id} " && (getresult | paste -sd' ') && tail -n +2 "${INP_XYZ_FILENAME}") > "${OUT_XYZ_FILENAME}"
 }
 
 ####################
@@ -324,7 +324,7 @@ for folder in ${folderlist}; do
   id=${folder#c} && id=${id%/}
 
   isfinished && postfinish "${id}"
-  getresult | head -n 1 | paste -d' ' <(echo "$((10#${id}))") -
+  getresult | paste -sd' ' | paste -d' ' <(echo "$((10#${id}))") -
 
   # timer
   elapsed=$(( $(date +%s) - start_time ))
@@ -353,5 +353,5 @@ for folder in ${folderlist}; do
   [ ! -d "$folder" ] && continue # check isfolder
   cd "$folder"
   id=${folder#c} && id=${id%/}
-  getresult | head -n 1 | paste -d' ' <(echo "$((10#${id}))") -
+  getresult | paste -sd' ' | paste -d' ' <(echo "$((10#${id}))") -
 done | tee "${WD}/${fn}.dat"
