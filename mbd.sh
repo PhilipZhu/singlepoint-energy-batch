@@ -427,7 +427,7 @@ for ((order = 1; order <= max_nb; order++)); do
       echo "$(awk '
       FNR==NR {a[NR]=$0; next} {split(a[FNR],b);
       printf "%d ", $1;
-      if(NF == length(b))
+      if(NF == length(b) && $1 == b[1])
         for(i=2;i<=NF;i++)
           if($i+0==$i && b[i]+0==b[i]) printf "%.16G ", b[i]-$i;
           else printf "%s ", b[i];
