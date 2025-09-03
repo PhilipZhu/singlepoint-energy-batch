@@ -130,7 +130,7 @@ getresult(){
 postfinish(){
   local OUT_XYZ_FILENAME="output.xyz"
   local id="$1"
-  rm -rf "${OUT_XYZ_FILENAME}" && (head -n 1 "${INP_XYZ_FILENAME}" && echo -n "${id} " && (getresult | paste -sd' ') && tail -n +2 "${INP_XYZ_FILENAME}") > "${OUT_XYZ_FILENAME}"
+  rm -rf "${OUT_XYZ_FILENAME}" && (head -n 1 "${INP_XYZ_FILENAME}" && echo -n "${id} " && (getresult | paste -sd' ' | tr '\n' ' ') && tail -n +2 "${INP_XYZ_FILENAME}") > "${OUT_XYZ_FILENAME}"
 }
 
 ####################
