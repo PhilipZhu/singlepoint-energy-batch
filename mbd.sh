@@ -175,9 +175,12 @@ fi
 # function defs
 #-----------------#
 
-# Perform generate_subclusters algorithm and store in array
+# Generate subclusters and run jobs
+# Arg 1: cluster binary
+# Arg 2: function/executable name. Will run "$fun $bin"
 generate_subclusters() {
   local bin="$1"
+  local fun="$2"
   local ones=()
 
   # Find indices of '1's
@@ -199,8 +202,104 @@ generate_subclusters() {
         temp="${temp:0:${ones[j]}}0${temp:$((ones[j] + 1))}"
       fi
     done
-    echo "$temp"
+    "$fun" "$temp"
   done
+}
+
+# Generates subclusters and run jobs from low to high order
+# Arg 1: cluster binary
+# Arg 2: function/executable name. Will run "$fun $bin"
+generate_subclusters_v2() {
+  local bin="$1"
+  local fun="$2"
+  local ones=() level=()
+
+  # Collect indices of '1's
+  for ((i = 0; i < ${#bin}; i++)); do
+    [[ ${bin:i:1} == 1 ]] && ones+=($i)
+  done
+
+  for ((k = 1; k < ${#ones[@]}; k++)); do
+    if ((k == 1)); then
+      # start with 1-element subsets
+      level=("${ones[@]}")
+    else
+      # grow subsets by adding larger elements
+      local next_level=()
+      for s in "${level[@]}"; do
+        IFS=',' read -ra arr <<< "$s"
+        last=${arr[-1]}
+        for i in "${ones[@]}"; do
+          ((i > last)) && next_level+=("$s,$i")
+        done
+      done
+      level=("${next_level[@]}")
+    fi
+
+    # generate binary string
+    for s in "${level[@]}"; do
+      local temp="$bin"
+      IFS=',' read -ra keep <<< "$s"
+      local flags=()
+      for i in "${keep[@]}"; do flags[i]=1; done
+      for i in "${ones[@]}"; do
+        [[ -z ${flags[i]} ]] && temp="${temp:0:$i}0${temp:$((i+1))}"
+      done
+      "$fun" "$temp"
+    done
+  done
+}
+
+# arg 1: cluster binary
+# need global variables defined:
+#   num_monomers, chargelist, frozenlist, natomslist, multiplicitylist, ranges, max_nb, do_cp, expected_atoms, input_xyz, sdir
+write_subcluster_xyz() {
+    binary="$1"
+
+    # Determine included monomers
+    included_monomers=()
+    charge=0
+    frozen=0
+    multiplicity_sum=0
+    num_included_atoms=0
+    subsystem_ranges=()
+
+    for ((j = 0; j < num_monomers; j++)); do
+      if [[ ${binary:j:1} -eq 1 ]]; then
+        included_monomers+=("$((j + 1))")
+        charge=$((charge + chargelist[j]))
+        frozen=$((frozen + frozenlist[j]))
+        num_included_atoms=$((num_included_atoms + natomslist[j]))
+        multiplicity_sum=$((multiplicity_sum + multiplicitylist[j] - 1))
+        subsystem_ranges+=("${ranges[j]}")
+      fi
+    done
+
+    # Break out of loop if max order is reached
+    num_included_monomers="${#included_monomers[@]}"
+    [[ $num_included_monomers -gt $max_nb ]] && return
+
+    multiplicity=$((multiplicity_sum % 2 + 1))
+    ranges_str=$(IFS=","; echo "${subsystem_ranges[*]}")
+
+    # Output results for this subsystem using the stored variables
+    echo "Subsystem: $binary"
+    echo "  Number of monomers: $num_included_monomers"
+    echo "  Number of atoms: $num_included_atoms"
+    echo "  Charge: $charge"
+    echo "  Multiplicity: $multiplicity"
+    echo "  Frozen: $frozen"
+    echo "  Ranges: $ranges_str"
+    echo
+
+    # Write Subsystem to file
+    if [ "$do_cp" == "true" ]; then
+      # counterpoise
+      modskip -c $((expected_atoms+2)) -p "1,2,$ranges_str" -v -F 'print $1, ":", $2, $3, $4' "$input_xyz" | modskip -c $((expected_atoms+2)) -p "2:$((expected_atoms+2))" | modskip -c $((expected_atoms+1)) -p 1 -F 'print "'"${expected_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((expected_atoms+1))"'), $0' > "${sdir}/tmp_${binary}.$$.xyz" && mv "${sdir}/tmp_${binary}.$$.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+    else
+      # no counterpoise
+      modskip -c $((expected_atoms+2)) -p "2,$ranges_str" "$input_xyz" | modskip -c $((num_included_atoms+1)) -p 1 -F 'print "'"${num_included_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((num_included_atoms+1))"'), $0' > "${sdir}/tmp_${binary}.$$.xyz" && mv "${sdir}/tmp_${binary}.$$.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
+    fi
 }
 
 modskip() {
@@ -336,70 +435,24 @@ if [ "$flag_force" == "true" ] || [ ! -d "${sdir}" ]; then
   done
 
   # Generate subsystems
-  max_index=$((2 ** num_monomers - 1))
-
-  for ((i = 1; i <= max_index; i++)); do
-    # binary conversion
-    binary=$(echo "obase=2; $i" | bc | xargs printf "%0${num_monomers}d")
-
-    # Determine included monomers
-    included_monomers=()
-    charge=0
-    frozen=0
-    multiplicity_sum=0
-    num_included_atoms=0
-    subsystem_ranges=()
-
-    for ((j = 0; j < num_monomers; j++)); do
-      if [[ ${binary:j:1} -eq 1 ]]; then
-        included_monomers+=("$((j + 1))")
-        charge=$((charge + chargelist[j]))
-        frozen=$((frozen + frozenlist[j]))
-        num_included_atoms=$((num_included_atoms + natomslist[j]))
-        multiplicity_sum=$((multiplicity_sum + multiplicitylist[j] - 1))
-        subsystem_ranges+=("${ranges[j]}")
-      fi
-    done
-
-    # Break out of loop if max order is reached
-    num_included_monomers="${#included_monomers[@]}"
-    [[ $num_included_monomers -gt $max_nb ]] && continue
-
-    multiplicity=$((multiplicity_sum % 2 + 1))
-    ranges_str=$(IFS=","; echo "${subsystem_ranges[*]}")
-
-    # Output results for this subsystem using the stored variables
-    echo "Subsystem: $binary"
-    echo "  Number of monomers: $num_included_monomers"
-    echo "  Number of atoms: $num_included_atoms"
-    echo "  Charge: $charge"
-    echo "  Multiplicity: $multiplicity"
-    echo "  Frozen: $frozen"
-    echo "  Ranges: $ranges_str"
-    echo
-
-    # Write Subsystem to file
-    if [ "$do_cp" == "true" ]; then
-      # counterpoise
-      modskip -c $((expected_atoms+2)) -p "1,2,$ranges_str" -v -F 'print $1, ":", $2, $3, $4' "$input_xyz" | modskip -c $((expected_atoms+2)) -p "2:$((expected_atoms+2))" | modskip -c $((expected_atoms+1)) -p 1 -F 'print "'"${expected_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((expected_atoms+1))"'), $0' > "${sdir}/tmp_${binary}.$$.xyz" && mv "${sdir}/tmp_${binary}.$$.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
-    else
-      # no counterpoise
-      modskip -c $((expected_atoms+2)) -p "2,$ranges_str" "$input_xyz" | modskip -c $((num_included_atoms+1)) -p 1 -F 'print "'"${num_included_atoms}"'\n", '"${charge}, ${multiplicity}, ${frozen}"', "frame:" int(NR/'"$((num_included_atoms+1))"'), $0' > "${sdir}/tmp_${binary}.$$.xyz" && mv "${sdir}/tmp_${binary}.$$.xyz" "${sdir}/${num_included_monomers}xx${binary}.xyz"
-    fi
-  done
+  max_binary=$(printf '1%.0s' $(seq 1 $num_monomers))
+#  generate_subclusters "$max_binary" write_subcluster_xyz
+  generate_subclusters_v2 "$max_binary" write_subcluster_xyz
+  write_subcluster_xyz "$max_binary"
 
 fi
 
 # run calculations
 cd "${sdir}/"
 
-#for xyzfile in *xx*.xyz; do
-for xyzfile in $(ls *xx*.xyz 2> /dev/null | shuf); do
-  chg=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $1}')
-  mult=$(head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $2}')
-  frz=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $3}')
-  [ "$flag_clean" == "true" ] && ${SRC_DIR}/singlepoint -c -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" > /dev/null
-  [ "$flag_clean" != "true" ] && ${SRC_DIR}/singlepoint    -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" >&2
+for ((order = 1; order <= max_nb; order++)); do
+  for xyzfile in $(ls ${order}xx*.xyz 2> /dev/null | shuf); do
+    chg=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $1}')
+    mult=$(head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $2}')
+    frz=$( head -n 2 "${xyzfile}" | tail -n 1 | awk '{print $3}')
+    [ "$flag_clean" == "true" ] && ${SRC_DIR}/singlepoint -c -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" > /dev/null
+    [ "$flag_clean" != "true" ] && ${SRC_DIR}/singlepoint    -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" >&2
+  done
 done
 
 cd $wd
@@ -409,11 +462,11 @@ cd "${sdir}/"
 
 for ((order = 1; order <= max_nb; order++)); do
   [ "$(ls ${order}xx*.dat 2>/dev/null | wc -l)" -eq 0 ] && continue
-  for xyzfile in ${order}xx*.dat; do
+  for xyzfile in $(ls ${order}xx*.dat); do
     binary=${xyzfile#*xx}
     binary=${binary%.dat}
 
-    subsubclusters_binaries="$(generate_subclusters "$binary")"
+    subsubclusters_binaries="$(generate_subclusters "$binary" "echo")"
 
 #    awk '{print $1, $2}' ${order}xx${binary}.dat > ${order}MB${binary}.dat
 #
