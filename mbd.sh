@@ -61,6 +61,9 @@ Options:
        -c                clean
           Removes unfinished outputs, reports finished results. No calculation performed.
 
+       -n                no_report
+           Skip final report of finished results.
+
        -s <settings.ini> source
           Customize settings. The file provided as argument is sourced before running.
 
@@ -74,11 +77,12 @@ Precedence:
 }
 
 # Parse options
-while getopts "hfcs:S:" opt; do
+while getopts "hfcns:S:" opt; do
     case $opt in
         h) usage;;
         f) flag_force="true" ;;
         c) flag_clean="true" ;;
+        n) flag_norep="true" ;;
         s) MBD_INI_SRC_FILE="$OPTARG"
             if [ ! -f "$MBD_INI_SRC_FILE" ]; then
               echo "Error: Settings file '$MBD_INI_SRC_FILE' does not exist" >&2
@@ -454,6 +458,9 @@ for ((order = 1; order <= max_nb; order++)); do
     [ "$flag_clean" != "true" ] && ${SRC_DIR}/singlepoint    -S "$SOFTWARE_INI_PATH" $xyzfile $chg $mult $frz "${@:2}" >&2
   done
 done
+
+# check if skip report result
+[ "$flag_norep" != "true" ] && echo "Now calculating MB decomp..." >&2 || exit
 
 cd $wd
 
